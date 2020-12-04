@@ -1,10 +1,16 @@
 const core = require('@actions/core');
+const github = require('@actions/github');
 const wait = require('./wait');
 
 
 // most @actions toolkit packages have async methods
 async function run() {
   try {
+    // const token = core.getInput('GITHUB_TOKEN');
+    core.info(github.context)
+    // Available in the build.yml, how to get it here...
+    // const pr = ${{github.event.number}};
+
     const ms = core.getInput('milliseconds');
     core.info(`Waiting ${ms} milliseconds ...`);
 

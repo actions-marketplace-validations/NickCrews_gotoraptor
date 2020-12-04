@@ -1,7 +1,7 @@
 {
-  "name": "javascript-action",
+  "name": "gotoraptor",
   "version": "1.0.0",
-  "description": "JavaScript Action Template",
+  "description": "GitHub Action that sends velociraptors when `goto`s are added. xkcd.com/292",
   "main": "index.js",
   "scripts": {
     "lint": "eslint .",
@@ -11,21 +11,22 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/actions/javascript-action.git"
+    "url": "git+https://github.com/NickCrews/gotoraptor.git"
   },
   "keywords": [
     "GitHub",
     "Actions",
     "JavaScript"
   ],
-  "author": "",
+  "author": "Nick Crews <nicholas.b.crews@gmail.com>",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/actions/javascript-action/issues"
+    "url": "https://github.com/NickCrews/gotoraptor/issues"
   },
-  "homepage": "https://github.com/actions/javascript-action#readme",
+  "homepage": "https://github.com/NickCrews/gotoraptor#readme",
   "dependencies": {
-    "@actions/core": "^1.2.5"
+    "@actions/core": "^1.2.5",
+    "@actions/github": "^4.0.0"
   },
   "devDependencies": {
     "@vercel/ncc": "^0.25.1",
