@@ -3,7 +3,7 @@ description: 'Sends velociraptors if `goto` statements are added. xkcd.com/292'
 inputs:
   github-token:
     description: 'The GITHUB_TOKEN secret'
-    required: true
+    default: ${{ github.token }}
 outputs:
   gotos: # output will be available to future steps
     description: 'Either `True` if a `goto` statement was added, `False` otherwise.'
