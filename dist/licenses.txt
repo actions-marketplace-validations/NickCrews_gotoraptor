@@ -425,6 +425,9 @@ Apache-2.0
    limitations under the License.
 
 
+clang-tools-prebuilt
+MIT
+
 deprecation
 ISC
 The ISC License

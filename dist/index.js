@@ -5,29 +5,86 @@ require('./sourcemap-register.js');module.exports =
 /***/ 932:
 /***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
 
+const path = __webpack_require__(622);
+const proc = __webpack_require__(129);
+
 const core = __webpack_require__(186);
 const github = __webpack_require__(438);
 
+const clang_tools_bin_dir = __webpack_require__(124);
+
+async function getChangedCFiles(ok, owner, repo, pr) {
+  core.debug(`fetching changed files from ${owner}/${repo} PR #${pr}`);
+  const response = await ok.pulls.listFiles({
+    owner: owner,
+    repo: repo,
+    pull_number: pr,
+    page: 0,
+    per_page: 300
+  });
+  const all_filenames = response.data.map(file => file.filename);
+  core.debug(`detected changes in the files ${all_filenames}`)
+  /* regex for c, cc, h, hpp */
+  const pattern = /.*\.[ch](p{2})?$/;
+  const c_filenames = all_filenames.filter(name => name.match(pattern));
+  core.debug(`detected changes in the C/C++ files ${c_filenames}`)
+
+  if (c_filenames.length == 0) {
+      core.info("No C/C++ files changed...");
+      core.setOutput('gotos', 'False');
+      process.exit(0);
+  }
+  return c_filenames;
+}
+
+async function runClangTidy(files) {
+    const clang_tidy_path = path.join(clang_tools_bin_dir, 'clang-tidy');
+    const { GITHUB_WORKSPACE } = process.env;
+    const args = process.argv.slice(2)
+        .concat('-checks=-*,cppcoreguidelines-avoid-goto')
+        .concat(files);
+    const child = proc.spawnSync(clang_tidy_path, args, {
+        stdio: 'inherit',
+        cwd: GITHUB_WORKSPACE,
+        timeout: 30 * 1000
+    });
+    core.debug(`Ran clang-tidy: ${JSON.stringify(child)}`);
+    if (child.status) {
+      throw new Error(`clang-tidy failed: ${JSON.stringify(child)}`);
+    }
+    return child.stdout;
+}
+
+async function sendVelociraptors(ok, owner, repo, pr) {
+  core.debug(`Sending velociraptors to pull request #${pr}`);
+  // await ok.pulls.createReviewComment({
+  await ok.issues.createComment({
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+    // pull_number: pr.number,
+    issue_number: pr,
+    body: 'YOU ADDED A GOTO'
+  });
+  core.debug(`Sent velociraptors to pull request #${pr}`);
+}
+
 async function run() {
   try {
-    const token = core.getInput("github-token", { required: true });
-
-    const { pull_request: pr } = github.context.payload;
-    if (!pr) {
-      throw new Error("Event payload missing `pull_request`");
+    if (github.context.eventName != 'pull_request') {
+      throw new Error('`gotoraptor` action only supports pull requests');
     }
 
+    const pr = github.context.payload.pull_request.number;
+    const owner = github.context.repo.owner;
+    const repo = github.context.repo.repo;
+    const token = core.getInput("github-token", { required: true });
     const ok = github.getOctokit(token);
-    core.debug(`Sending velociraptors to pull request #${pr.number}`);
-    // await ok.pulls.createReviewComment({
-    await ok.issues.createComment({
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo,
-      // pull_number: pr.number,
-      issue_number: pr.number,
-      body: 'YOU ADDED A GOTO'
-    });
-    core.debug(`Sent velociraptors to pull request #${pr.number}`);
+
+    const filenames = await getChangedCFiles(ok, owner, repo, pr);
+    const gotos = await runClangTidy(filenames);
+
+    core.info(gotos)
+
     core.setOutput('gotos', 'True');
   } catch (error) {
     core.setFailed(error.message);
@@ -1498,7 +1555,7 @@ exports.Octokit = Octokit;
 
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 
-var isPlainObject = __webpack_require__(287);
+var isPlainObject = __webpack_require__(558);
 var universalUserAgent = __webpack_require__(429);
 
 function lowercaseKeys(object) {
@@ -1884,6 +1941,52 @@ const endpoint = withDefaults(null, DEFAULTS);
 
 exports.endpoint = endpoint;
 //# sourceMappingURL=index.js.map
+
+
+/***/ }),
+
+/***/ 558:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+
+/*!
+ * is-plain-object <https://github.com/jonschlinkert/is-plain-object>
+ *
+ * Copyright (c) 2014-2017, Jon Schlinkert.
+ * Released under the MIT License.
+ */
+
+function isObject(o) {
+  return Object.prototype.toString.call(o) === '[object Object]';
+}
+
+function isPlainObject(o) {
+  var ctor,prot;
+
+  if (isObject(o) === false) return false;
+
+  // If has modified constructor
+  ctor = o.constructor;
+  if (ctor === undefined) return true;
+
+  // If has modified prototype
+  prot = ctor.prototype;
+  if (isObject(prot) === false) return false;
+
+  // If constructor does not have an Object-specific method
+  if (prot.hasOwnProperty('isPrototypeOf') === false) {
+    return false;
+  }
+
+  // Most likely a plain Object
+  return true;
+}
+
+exports.isPlainObject = isPlainObject;
 
 
 /***/ }),
@@ -3360,7 +3463,7 @@ function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'defau
 
 var endpoint = __webpack_require__(440);
 var universalUserAgent = __webpack_require__(429);
-var isPlainObject = __webpack_require__(287);
+var isPlainObject = __webpack_require__(62);
 var nodeFetch = _interopDefault(__webpack_require__(467));
 var requestError = __webpack_require__(537);
 
@@ -3500,6 +3603,52 @@ const request = withDefaults(endpoint.endpoint, {
 
 exports.request = request;
 //# sourceMappingURL=index.js.map
+
+
+/***/ }),
+
+/***/ 62:
+/***/ ((__unused_webpack_module, exports) => {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+
+/*!
+ * is-plain-object <https://github.com/jonschlinkert/is-plain-object>
+ *
+ * Copyright (c) 2014-2017, Jon Schlinkert.
+ * Released under the MIT License.
+ */
+
+function isObject(o) {
+  return Object.prototype.toString.call(o) === '[object Object]';
+}
+
+function isPlainObject(o) {
+  var ctor,prot;
+
+  if (isObject(o) === false) return false;
+
+  // If has modified constructor
+  ctor = o.constructor;
+  if (ctor === undefined) return true;
+
+  // If has modified prototype
+  prot = ctor.prototype;
+  if (isObject(prot) === false) return false;
+
+  // If constructor does not have an Object-specific method
+  if (prot.hasOwnProperty('isPrototypeOf') === false) {
+    return false;
+  }
+
+  // Most likely a plain Object
+  return true;
+}
+
+exports.isPlainObject = isPlainObject;
 
 
 /***/ }),
@@ -3680,6 +3829,15 @@ function removeHook (state, name, method) {
 
 /***/ }),
 
+/***/ 124:
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+const path = __webpack_require__(622)
+module.exports = __webpack_require__.ab + "bin"
+
+
+/***/ }),
+
 /***/ 481:
 /***/ ((__unused_webpack_module, exports) => {
 
@@ -3704,52 +3862,6 @@ class Deprecation extends Error {
 }
 
 exports.Deprecation = Deprecation;
-
-
-/***/ }),
-
-/***/ 287:
-/***/ ((__unused_webpack_module, exports) => {
-
-"use strict";
-
-
-Object.defineProperty(exports, "__esModule", ({ value: true }));
-
-/*!
- * is-plain-object <https://github.com/jonschlinkert/is-plain-object>
- *
- * Copyright (c) 2014-2017, Jon Schlinkert.
- * Released under the MIT License.
- */
-
-function isObject(o) {
-  return Object.prototype.toString.call(o) === '[object Object]';
-}
-
-function isPlainObject(o) {
-  var ctor,prot;
-
-  if (isObject(o) === false) return false;
-
-  // If has modified constructor
-  ctor = o.constructor;
-  if (ctor === undefined) return true;
-
-  // If has modified prototype
-  prot = ctor.prototype;
-  if (isObject(prot) === false) return false;
-
-  // If constructor does not have an Object-specific method
-  if (prot.hasOwnProperty('isPrototypeOf') === false) {
-    return false;
-  }
-
-  // Most likely a plain Object
-  return true;
-}
-
-exports.isPlainObject = isPlainObject;
 
 
 /***/ }),
@@ -5819,6 +5931,14 @@ module.exports = eval("require")("encoding");
 
 "use strict";
 module.exports = require("assert");;
+
+/***/ }),
+
+/***/ 129:
+/***/ ((module) => {
+
+"use strict";
+module.exports = require("child_process");;
 
 /***/ }),
 
