@@ -110,6 +110,9 @@ function getVelociraptorMemes() {
 
 async function getAddedGotos(){
   const files = await getChangedCFiles();
+  if (files.length == 0) {
+    return [];
+  }
   const gotos = runClangTidy(files.map(f => f.filename));
   return gotos;
 }
