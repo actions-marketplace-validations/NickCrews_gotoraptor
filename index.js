@@ -1,10 +1,18 @@
+// docs.github.com/v3/checks
+
 const path = require('path');
 const proc = require('child_process');
 
 const core = require('@actions/core');
 const github = require('@actions/github');
 
-const clang_tools_bin_dir = require('clang-tools-prebuilt');
+const { GITHUB_WORKSPACE } = process.env;
+const TOKEN = core.getInput("github-token", { required: true });
+const octokit = github.getOctokit(TOKEN);
+
+// const clang_tools_bin_dir = require('clang-tools-prebuilt');
+
+const CHECK_NAME = 'Goto Velociraptor Check'
 
 async function getChangedCFiles(ok, owner, repo, pr) {
   core.debug(`fetching changed files from ${owner}/${repo} PR #${pr}`);
@@ -21,16 +29,10 @@ async function getChangedCFiles(ok, owner, repo, pr) {
   const pattern = /.*\.[ch](p{2})?$/;
   const c_filenames = all_filenames.filter(name => name.match(pattern));
   core.debug(`detected changes in the C/C++ files ${c_filenames}`)
-
-  if (c_filenames.length == 0) {
-      core.info("No C/C++ files changed...");
-      core.setOutput('gotos', 'False');
-      process.exit(0);
-  }
   return c_filenames;
 }
 
-async function runClangTidy(files) {
+function runClangTidy(files) {
     const clang_tidy_path = path.join(clang_tools_bin_dir, 'clang-tidy');
     const { GITHUB_WORKSPACE } = process.env;
     const args = process.argv.slice(2)
@@ -48,39 +50,115 @@ async function runClangTidy(files) {
     return child.stdout;
 }
 
-async function sendVelociraptors(ok, owner, repo, pr) {
-  core.debug(`Sending velociraptors to pull request #${pr}`);
-  // await ok.pulls.createReviewComment({
-  await ok.issues.createComment({
-    owner: github.context.repo.owner,
-    repo: github.context.repo.repo,
-    // pull_number: pr.number,
-    issue_number: pr,
-    body: 'YOU ADDED A GOTO'
-  });
-  core.debug(`Sent velociraptors to pull request #${pr}`);
+// If we're on a PR, use the sha from the payload to prevent Ghost Check Runs
+// from https://github.com/IgnusG/jest-report-action/blob/de40d98e24f18a77e637762c8d2a1751edfbcc44/tasks/github-api.js#L3
+function getHeadSHA() {
+  if (github.context.payload.pull_request) {
+    return github.context.payload.pull_request.head.sha;
+  }
+  return github.context.sha;
 }
 
-async function run() {
-  try {
-    if (github.context.eventName != 'pull_request') {
-      throw new Error('`gotoraptor` action only supports pull requests');
+async function sendInitialCheck() {
+  const check = await octokit.checks.create({
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+    head_sha: getHeadSHA(),
+    name: CHECK_NAME,
+    status: "in_progress",
+    started_at: new Date()
+  });
+  return check.data.id;
+}
+
+const VELOCIRAPTOR_MEME_URLS = [
+  'https://i.imgur.com/wV7InR8.gif'
+]
+
+function getVelociraptorMemes() {
+ return VELOCIRAPTOR_MEME_URLS.map(url => {
+   return {
+     image_url: url,
+     alt: 'velociraptor meme'
+   };
+  });
+}
+
+// async function getOctokit(token) {
+//   const { Octokit } = require("@octokit/rest");
+//   // const { GITHUB_TOKEN } = process.env;
+//   const octokit = new Octokit({
+//     // auth: GITHUB_TOKEN,
+//     auth: token,
+//     log: {
+//       debug: core.debug,
+//       info: core.info,
+//       warn: core.warn,
+//       error: core.error
+//     }
+//   });
+//   return octokit
+// }
+
+function makeResults(gotos) {
+  if (gotos.length == 0) {
+    core.setOutput('gotos', 'False');
+    return {
+      conclusion: 'success',
+      output: {
+        title: "No gotos added.",
+        summary: "You got away this time."
+      }
     }
-
-    const pr = github.context.payload.pull_request.number;
-    const owner = github.context.repo.owner;
-    const repo = github.context.repo.repo;
-    const token = core.getInput("github-token", { required: true });
-    const ok = github.getOctokit(token);
-
-    const filenames = await getChangedCFiles(ok, owner, repo, pr);
-    const gotos = await runClangTidy(filenames);
-
-    core.info(gotos)
-
+  } else {
     core.setOutput('gotos', 'True');
+    return {
+      conclusion: 'failure',
+      output: {
+        title: 'Velociraptors incoming!',
+        summary: 'gotos were added!',
+        images: getVelociraptorMemes().slice(0, 1),
+        annotations: []
+      }
+    }
+  }
+}
+
+async function completeCheck(check_id, results) {
+  const options = {
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+    check_run_id: check_id,
+    status: 'completed',
+    conclusion: results.conclusion,
+    completed_at: new Date(),
+    output: results.output
+  }
+  core.debug(`Check update request options: ${JSON.stringify(options)}`);
+  return await octokit.checks.update(options);
+}
+
+const ERROR_SUMMARY = `Something went wrong internally in the check.
+
+Please file an issue against this [action](https://github.com/NickCrews/gotoraptor/issues/new)`
+
+async function run() {
+  const check_id = await sendInitialCheck();
+  core.debug(`Check ID is ${check_id}`);
+  try {
+    const results = makeResults(['goto1'])
+    await completeCheck(check_id, results);
   } catch (error) {
     core.setFailed(error.message);
+    core.error(error.stack);
+    await completeCheck(check_id, {
+      conclusion: 'failure',
+      output: {
+        title: 'The check errored',
+        summary: ERROR_SUMMARY
+      }
+    })
+    process.exit(1);
   }
 }
 
