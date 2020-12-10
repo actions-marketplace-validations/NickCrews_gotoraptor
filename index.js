@@ -32,12 +32,12 @@ async function getChangedCFiles(ok, owner, repo, pr) {
   return c_filenames;
 }
 
-function runClangTidy(files) {
+function runClangTidy(filenames) {
     const clang_tidy_path = path.join(clang_tools_bin_dir, 'clang-tidy');
     const { GITHUB_WORKSPACE } = process.env;
     const args = process.argv.slice(2)
         .concat('-checks=-*,cppcoreguidelines-avoid-goto')
-        .concat(files);
+        .concat(filenames);
     const child = proc.spawnSync(clang_tidy_path, args, {
         stdio: 'inherit',
         cwd: GITHUB_WORKSPACE,
