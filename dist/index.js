@@ -125,6 +125,7 @@ async function getAddedGotos(){
 }
 
 function makeResults(gotos) {
+  core.debug(`gotos: ${JSON.stringify(gotos)}`);
   if (gotos.length == 0) {
     core.setOutput('gotos', 'False');
     return {
