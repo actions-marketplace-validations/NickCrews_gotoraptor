@@ -27,7 +27,7 @@ async function getChangedCFiles() {
     const response = await octokit.pulls.listFiles({
       owner: github.context.repo.owner,
       repo: github.context.repo.repo,
-      pull_number: github.context.payload.pull_request.nuumber,
+      pull_number: github.context.payload.pull_request.number,
       page: 0,
       per_page: 300
     });
