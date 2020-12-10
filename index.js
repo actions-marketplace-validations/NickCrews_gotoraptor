@@ -14,22 +14,38 @@ const octokit = github.getOctokit(TOKEN);
 
 const CHECK_NAME = 'Goto Velociraptor Check'
 
-async function getChangedCFiles(ok, owner, repo, pr) {
-  core.debug(`fetching changed files from ${owner}/${repo} PR #${pr}`);
-  const response = await ok.pulls.listFiles({
-    owner: owner,
-    repo: repo,
-    pull_number: pr,
-    page: 0,
-    per_page: 300
-  });
-  const all_filenames = response.data.map(file => file.filename);
-  core.debug(`detected changes in the files ${all_filenames}`)
-  /* regex for c, cc, h, hpp */
+async function getChangedCFiles() {
+  if (isPR()) {
+    // See https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-pull-requests-files
+    const response = await octokit.pulls.listFiles({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      pull_number: github.context.payload.pull_request.nuumber,
+      page: 0,
+      per_page: 300
+    });
+    const files = response.data;
+  } else {
+    // See https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#get-a-commit
+    const response = await octokit.repos.getCommit({
+      owner: github.context.repo.owner,
+      repo: github.context.repo.repo,
+      ref: getHeadSHA()
+    });
+    const files = response.data.files;
+  }
+  core.debug(`All touched files: ${files.map(f => f.filename)}`);
+  // The possible values of GitHub file statuses per
+  // https://github.com/jitterbit/get-changed-files/blob/b17fbb00bdc0c0f63fcf166580804b4d2cdc2a42/src/main.ts#L5
+  // type FileStatus = 'added' | 'modified' | 'removed' | 'renamed'
+  const changedStatuses = ['added', 'modified', 'renamed'];
+  const changedFiles = files.filter(f => changedStatuses.contains(f.status));
+  core.debug(`Files with changes: ${changedFiles.map(f => f.filename)}`);
+  // regex for c, cc, h, hpp
   const pattern = /.*\.[ch](p{2})?$/;
-  const c_filenames = all_filenames.filter(name => name.match(pattern));
-  core.debug(`detected changes in the C/C++ files ${c_filenames}`)
-  return c_filenames;
+  const changedCFiles = changedFiles.filter(f => f.filename.match(pattern));
+  core.debug(`Changed C/C++ files ${changedCFiles.map(f => f.filename)}`)
+  return changedCFiles
 }
 
 function runClangTidy(filenames) {
@@ -90,6 +106,11 @@ function getVelociraptorMemes() {
   });
 }
 
+async function getAddedGotos(){
+  const files = await getChangedCFiles();
+  const gotos = runClangTidy(files.map(f => f.filename));
+  return gotos;
+}
 
 function makeResults(gotos) {
   if (gotos.length == 0) {
@@ -146,7 +167,8 @@ async function run() {
   core.debug(`Running on a ${isPR() ? 'PR' : 'push'} event.`);
   const check_id = await sendInitialCheck();
   try {
-    const results = makeResults(['goto1'])
+    const gotos = await getAddedGotos();
+    const results = makeResults(gotos)
     await completeCheck(check_id, results);
   } catch (error) {
     core.setFailed(error.message);
