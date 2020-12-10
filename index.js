@@ -50,10 +50,14 @@ function runClangTidy(files) {
     return child.stdout;
 }
 
+function isPR() {
+  return Boolean(github.context.payload.pull_request)
+}
+
 // If we're on a PR, use the sha from the payload to prevent Ghost Check Runs
 // from https://github.com/IgnusG/jest-report-action/blob/de40d98e24f18a77e637762c8d2a1751edfbcc44/tasks/github-api.js#L3
 function getHeadSHA() {
-  if (github.context.payload.pull_request) {
+  if (isPR()) {
     return github.context.payload.pull_request.head.sha;
   }
   return github.context.sha;
@@ -68,6 +72,7 @@ async function sendInitialCheck() {
     status: "in_progress",
     started_at: new Date()
   });
+  core.debug(`Check ID is ${check.data.id}`);
   return check.data.id;
 }
 
@@ -142,22 +147,24 @@ const ERROR_SUMMARY = `Something went wrong internally in the check.
 
 Please file an issue against this [action](https://github.com/NickCrews/gotoraptor/issues/new)`
 
+const ERROR_RESULT = {
+  conclusion: 'failure',
+  output: {
+    title: 'The check errored',
+    summary: ERROR_SUMMARY
+  }
+}
+
 async function run() {
+  core.debug(`Running on a ${isPR() ? 'PR' : 'push'} event.`);
   const check_id = await sendInitialCheck();
-  core.debug(`Check ID is ${check_id}`);
   try {
     const results = makeResults(['goto1'])
     await completeCheck(check_id, results);
   } catch (error) {
     core.setFailed(error.message);
     core.error(error.stack);
-    await completeCheck(check_id, {
-      conclusion: 'failure',
-      output: {
-        title: 'The check errored',
-        summary: ERROR_SUMMARY
-      }
-    })
+    await completeCheck(check_id, ERROR_RESULT);
     process.exit(1);
   }
 }
