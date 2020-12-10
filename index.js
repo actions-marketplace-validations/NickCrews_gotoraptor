@@ -14,14 +14,14 @@ const clang_tools_bin_dir = require('clang-tools-prebuilt');
 
 const CHECK_NAME = 'Goto Velociraptor Check'
 
-async function getChangedCFiles() {
+async function getChangedCFiles(context) {
   let files;
-  if (isPR()) {
+  if (isPR(context)) {
     // See https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-pull-requests-files
     const response = await octokit.pulls.listFiles({
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo,
-      pull_number: github.context.payload.pull_request.number,
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      pull_number: context.payload.pull_request.number,
       page: 0,
       per_page: 300
     });
@@ -29,9 +29,9 @@ async function getChangedCFiles() {
   } else {
     // See https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#get-a-commit
     const response = await octokit.repos.getCommit({
-      owner: github.context.repo.owner,
-      repo: github.context.repo.repo,
-      ref: getHeadSHA()
+      owner: context.repo.owner,
+      repo: context.repo.repo,
+      ref: getHeadSHA(context)
     });
     files = response.data.files;
   }
@@ -69,24 +69,24 @@ function runClangTidy(filenames) {
     return child.stdout;
 }
 
-function isPR() {
-  return Boolean(github.context.payload.pull_request)
+function isPR(context) {
+  return Boolean(context.payload.pull_request)
 }
 
 // If we're on a PR, use the sha from the payload to prevent Ghost Check Runs
 // from https://github.com/IgnusG/jest-report-action/blob/de40d98e24f18a77e637762c8d2a1751edfbcc44/tasks/github-api.js#L3
-function getHeadSHA() {
-  if (isPR()) {
-    return github.context.payload.pull_request.head.sha;
+function getHeadSHA(context) {
+  if (isPR(context)) {
+    return context.payload.pull_request.head.sha;
   }
-  return github.context.sha;
+  return context.sha;
 }
 
-async function sendInitialCheck() {
+async function sendInitialCheck(context) {
   const check = await octokit.checks.create({
-    owner: github.context.repo.owner,
-    repo: github.context.repo.repo,
-    head_sha: getHeadSHA(),
+    owner: context.repo.owner,
+    repo: context.repo.repo,
+    head_sha: getHeadSHA(context),
     name: CHECK_NAME,
     status: "in_progress",
     started_at: new Date()
@@ -108,8 +108,8 @@ function getVelociraptorMemes() {
   });
 }
 
-async function getAddedGotos(){
-  const files = await getChangedCFiles();
+async function getAddedGotos(context){
+  const files = await getChangedCFiles(context);
   if (files.length == 0) {
     return [];
   }
@@ -142,10 +142,10 @@ function makeResults(gotos) {
   }
 }
 
-async function completeCheck(check_id, results) {
+async function completeCheck(context, check_id, results) {
   const options = {
-    owner: github.context.repo.owner,
-    repo: github.context.repo.repo,
+    owner: context.repo.owner,
+    repo: context.repo.repo,
     check_run_id: check_id,
     status: 'completed',
     conclusion: results.conclusion,
@@ -168,20 +168,20 @@ const ERROR_RESULT = {
   }
 }
 
-async function run() {
-  core.debug(JSON.stringify(github.context.payload));
-  core.debug(`Running on a ${isPR() ? 'PR' : 'push'} event.`);
-  const check_id = await sendInitialCheck();
+async function run(context) {
+  core.debug(JSON.stringify(context.payload));
+  core.debug(`Running on a ${isPR(context) ? 'PR' : 'push'} event.`);
+  const check_id = await sendInitialCheck(context);
   try {
-    const gotos = await getAddedGotos();
+    const gotos = await getAddedGotos(context);
     const results = makeResults(gotos)
-    await completeCheck(check_id, results);
+    await completeCheck(context, check_id, results);
   } catch (error) {
     core.setFailed(error.message);
     core.error(error.stack);
-    await completeCheck(check_id, ERROR_RESULT);
+    await completeCheck(context, check_id, ERROR_RESULT);
     process.exit(1);
   }
 }
 
-run();
+run(github.context);
