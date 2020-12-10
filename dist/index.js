@@ -17,7 +17,7 @@ const { GITHUB_WORKSPACE } = process.env;
 const TOKEN = core.getInput("github-token", { required: true });
 const octokit = github.getOctokit(TOKEN);
 
-// const clang_tools_bin_dir = require('clang-tools-prebuilt');
+const clang_tools_bin_dir = __webpack_require__(124);
 
 const CHECK_NAME = 'Goto Velociraptor Check'
 
@@ -3920,6 +3920,15 @@ function removeHook (state, name, method) {
 
   state.registry[name].splice(index, 1)
 }
+
+
+/***/ }),
+
+/***/ 124:
+/***/ ((module, __unused_webpack_exports, __webpack_require__) => {
+
+const path = __webpack_require__(622)
+module.exports = __webpack_require__.ab + "bin"
 
 
 /***/ }),

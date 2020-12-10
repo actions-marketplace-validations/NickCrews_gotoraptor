@@ -26,7 +26,8 @@
   "homepage": "https://github.com/NickCrews/gotoraptor#readme",
   "dependencies": {
     "@actions/core": "^1.2.5",
-    "@actions/github": "^4.0.0"
+    "@actions/github": "^4.0.0",
+    "clang-tools-prebuilt": "^0.1.4"
   },
   "devDependencies": {
     "@vercel/ncc": "^0.25.1",

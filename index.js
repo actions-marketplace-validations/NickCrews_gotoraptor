@@ -10,7 +10,7 @@ const { GITHUB_WORKSPACE } = process.env;
 const TOKEN = core.getInput("github-token", { required: true });
 const octokit = github.getOctokit(TOKEN);
 
-// const clang_tools_bin_dir = require('clang-tools-prebuilt');
+const clang_tools_bin_dir = require('clang-tools-prebuilt');
 
 const CHECK_NAME = 'Goto Velociraptor Check'
 
