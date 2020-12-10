@@ -40,7 +40,7 @@ async function getChangedCFiles() {
   // https://github.com/jitterbit/get-changed-files/blob/b17fbb00bdc0c0f63fcf166580804b4d2cdc2a42/src/main.ts#L5
   // type FileStatus = 'added' | 'modified' | 'removed' | 'renamed'
   const changedStatuses = ['added', 'modified', 'renamed'];
-  const changedFiles = files.filter(f => changedStatuses.contains(f.status));
+  const changedFiles = files.filter(f => changedStatuses.includes(f.status));
   core.debug(`Files with changes: ${changedFiles.map(f => f.filename)}`);
   // regex for c, cc, h, hpp
   const pattern = /.*\.[ch](p{2})?$/;
