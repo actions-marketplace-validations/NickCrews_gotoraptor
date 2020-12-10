@@ -47,6 +47,7 @@ function runClangTidy(filenames) {
     if (child.status) {
       throw new Error(`clang-tidy failed: ${JSON.stringify(child)}`);
     }
+    core.debug(`clang-tidy stdout: ${child.stdout}`);
     return child.stdout;
 }
 
@@ -141,6 +142,7 @@ const ERROR_RESULT = {
 }
 
 async function run() {
+  core.debug(JSON.stringify(github.context.payload));
   core.debug(`Running on a ${isPR() ? 'PR' : 'push'} event.`);
   const check_id = await sendInitialCheck();
   try {
