@@ -15,6 +15,7 @@ const octokit = github.getOctokit(TOKEN);
 const CHECK_NAME = 'Goto Velociraptor Check'
 
 async function getChangedCFiles() {
+  let files;
   if (isPR()) {
     // See https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-pull-requests-files
     const response = await octokit.pulls.listFiles({
@@ -24,7 +25,7 @@ async function getChangedCFiles() {
       page: 0,
       per_page: 300
     });
-    const files = response.data;
+    files = response.data;
   } else {
     // See https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#get-a-commit
     const response = await octokit.repos.getCommit({
@@ -32,7 +33,7 @@ async function getChangedCFiles() {
       repo: github.context.repo.repo,
       ref: getHeadSHA()
     });
-    const files = response.data.files;
+    files = response.data.files;
   }
   core.debug(`All touched files: ${files.map(f => f.filename)}`);
   // The possible values of GitHub file statuses per
