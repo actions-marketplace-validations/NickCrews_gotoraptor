@@ -45,7 +45,7 @@ async function getChangedCFiles() {
   // regex for c, cc, h, hpp
   const pattern = /.*\.[ch](p{2})?$/;
   const changedCFiles = changedFiles.filter(f => f.filename.match(pattern));
-  core.debug(`Changed C/C++ files ${changedCFiles.map(f => f.filename)}`)
+  core.debug(`Changed C/C++ files: ${changedCFiles.map(f => f.filename)}`)
   return changedCFiles
 }
 
