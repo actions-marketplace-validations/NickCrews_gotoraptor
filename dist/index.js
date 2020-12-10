@@ -62,6 +62,7 @@ function runClangTidy(filenames) {
     const args = process.argv.slice(2)
         .concat('-checks=-*,cppcoreguidelines-avoid-goto')
         .concat(filenames);
+    core.debug(`clang-tidy args: ${args}`);
     const child = proc.spawnSync(clang_tidy_path, args, {
         stdio: 'inherit',
         cwd: GITHUB_WORKSPACE,
