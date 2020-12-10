@@ -89,21 +89,6 @@ function getVelociraptorMemes() {
   });
 }
 
-// async function getOctokit(token) {
-//   const { Octokit } = require("@octokit/rest");
-//   // const { GITHUB_TOKEN } = process.env;
-//   const octokit = new Octokit({
-//     // auth: GITHUB_TOKEN,
-//     auth: token,
-//     log: {
-//       debug: core.debug,
-//       info: core.info,
-//       warn: core.warn,
-//       error: core.error
-//     }
-//   });
-//   return octokit
-// }
 
 function makeResults(gotos) {
   if (gotos.length == 0) {
