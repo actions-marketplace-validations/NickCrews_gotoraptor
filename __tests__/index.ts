@@ -22,4 +22,6 @@
 //   console.log(cp.execSync(`node ${ip}`, {env: process.env}).toString());
 // })
 
-test('dummy', () => {console.log('PASS');})
+test("dummy", () => {
+  expect(true).toBe(true);
+});
