@@ -8,6 +8,9 @@ dist/bin/clang-include-fixer
 dist/bin/clang-rename
 dist/bin/find-all-symbols
 
+# Compiled version, all we care about is the .ts source
+/lib
+
 # Editors
 .vscode/
 .idea/

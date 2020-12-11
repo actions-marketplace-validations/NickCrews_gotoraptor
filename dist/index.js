@@ -3,194 +3,264 @@ require('./sourcemap-register.js');module.exports =
 /******/ 	var __webpack_modules__ = ({
 
 /***/ 932:
-/***/ ((__unused_webpack_module, __unused_webpack_exports, __webpack_require__) => {
+/***/ (function(__unused_webpack_module, __unused_webpack_exports, __webpack_require__) {
 
 // docs.github.com/v3/checks
-
-const path = __webpack_require__(622);
-const proc = __webpack_require__(129);
-
-const core = __webpack_require__(186);
-const github = __webpack_require__(438);
-
-const { GITHUB_WORKSPACE } = process.env;
-const TOKEN = core.getInput("github-token", { required: true });
-const octokit = github.getOctokit(TOKEN);
-
-const clang_tools_bin_dir = __webpack_require__(124);
-
-const CHECK_NAME = 'Goto Velociraptor Check'
-
-async function getChangedCFiles(context) {
-  let files;
-  if (isPR()) {
-    // See https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-pull-requests-files
-    const response = await octokit.pulls.listFiles({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      pull_number: context.payload.pull_request.number,
-      page: 0,
-      per_page: 300
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
-    files = response.data;
-  } else {
-    // See https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#get-a-commit
-    const response = await octokit.repos.getCommit({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      ref: getHeadSHA()
+};
+var __generator = (this && this.__generator) || function (thisArg, body) {
+    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
+    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
+    function verb(n) { return function (v) { return step([n, v]); }; }
+    function step(op) {
+        if (f) throw new TypeError("Generator is already executing.");
+        while (_) try {
+            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
+            if (y = 0, t) op = [op[0] & 2, t.value];
+            switch (op[0]) {
+                case 0: case 1: t = op; break;
+                case 4: _.label++; return { value: op[1], done: false };
+                case 5: _.label++; y = op[1]; op = [0]; continue;
+                case 7: op = _.ops.pop(); _.trys.pop(); continue;
+                default:
+                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
+                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
+                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
+                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
+                    if (t[2]) _.ops.pop();
+                    _.trys.pop(); continue;
+            }
+            op = body.call(thisArg, _);
+        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
+        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
+    }
+};
+var path = __webpack_require__(622);
+var proc = __webpack_require__(129);
+var core = __webpack_require__(186);
+var github = __webpack_require__(438);
+var GITHUB_WORKSPACE = process.env.GITHUB_WORKSPACE;
+var TOKEN = core.getInput("github-token", { required: true });
+var octokit = github.getOctokit(TOKEN);
+var clang_tools_bin_dir = __webpack_require__(124);
+var CHECK_NAME = 'Goto Velociraptor Check';
+function getChangedCFiles(context) {
+    return __awaiter(this, void 0, void 0, function () {
+        var files, response, response, changedStatuses, changedFiles, pattern, changedCFiles;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    if (!isPR(context)) return [3 /*break*/, 2];
+                    return [4 /*yield*/, octokit.pulls.listFiles({
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            pull_number: context.payload.pull_request.number,
+                            page: 0,
+                            per_page: 300
+                        })];
+                case 1:
+                    response = _a.sent();
+                    files = response.data;
+                    return [3 /*break*/, 4];
+                case 2: return [4 /*yield*/, octokit.repos.getCommit({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        ref: getHeadSHA(context)
+                    })];
+                case 3:
+                    response = _a.sent();
+                    files = response.data.files;
+                    _a.label = 4;
+                case 4:
+                    core.debug("All touched files: " + files.map(function (f) { return f.filename; }));
+                    changedStatuses = ['added', 'modified', 'renamed'];
+                    changedFiles = files.filter(function (f) { return changedStatuses.includes(f.status); });
+                    core.debug("Files with changes: " + changedFiles.map(function (f) { return f.filename; }));
+                    pattern = /.*\.[ch](p{2})?$/;
+                    changedCFiles = changedFiles.filter(function (f) { return f.filename.match(pattern); });
+                    core.debug("Changed C/C++ files: " + changedCFiles.map(function (f) { return f.filename; }));
+                    return [2 /*return*/, changedCFiles];
+            }
+        });
     });
-    files = response.data.files;
-  }
-  core.debug(`All touched files: ${files.map(f => f.filename)}`);
-  // The possible values of GitHub file statuses per
-  // https://github.com/jitterbit/get-changed-files/blob/b17fbb00bdc0c0f63fcf166580804b4d2cdc2a42/src/main.ts#L5
-  // type FileStatus = 'added' | 'modified' | 'removed' | 'renamed'
-  const changedStatuses = ['added', 'modified', 'renamed'];
-  const changedFiles = files.filter(f => changedStatuses.includes(f.status));
-  core.debug(`Files with changes: ${changedFiles.map(f => f.filename)}`);
-  // regex for c, cc, h, hpp
-  const pattern = /.*\.[ch](p{2})?$/;
-  const changedCFiles = changedFiles.filter(f => f.filename.match(pattern));
-  core.debug(`Changed C/C++ files: ${changedCFiles.map(f => f.filename)}`)
-  return changedCFiles
 }
-
 function runClangTidy(filenames) {
-    const clang_tidy_path = path.join(clang_tools_bin_dir, 'clang-tidy');
-    const { GITHUB_WORKSPACE } = process.env;
-    const args = process.argv.slice(2)
+    var clang_tidy_path = path.join(clang_tools_bin_dir, 'clang-tidy');
+    var GITHUB_WORKSPACE = process.env.GITHUB_WORKSPACE;
+    var args = process.argv.slice(2)
         .concat('-checks=-*,cppcoreguidelines-avoid-goto')
         .concat(filenames);
-    core.debug(`clang-tidy args: ${args}`);
-    const child = proc.spawnSync(clang_tidy_path, args, {
+    core.debug("clang-tidy args: " + args);
+    var child = proc.spawnSync(clang_tidy_path, args, {
         stdio: 'inherit',
         cwd: GITHUB_WORKSPACE,
         timeout: 30 * 1000
     });
-    core.debug(`Ran clang-tidy: ${JSON.stringify(child)}`);
+    core.debug("Ran clang-tidy: " + JSON.stringify(child));
     if (child.status) {
-      throw new Error(`clang-tidy failed: ${JSON.stringify(child)}`);
+        throw new Error("clang-tidy failed: " + JSON.stringify(child));
     }
-    core.debug(`clang-tidy stdout: ${child.stdout}`);
+    core.debug("clang-tidy stdout: " + child.stdout);
     return child.stdout;
 }
-
 function isPR(context) {
-  return Boolean(context.payload.pull_request)
+    return Boolean(context.payload.pull_request);
 }
-
 // If we're on a PR, use the sha from the payload to prevent Ghost Check Runs
 // from https://github.com/IgnusG/jest-report-action/blob/de40d98e24f18a77e637762c8d2a1751edfbcc44/tasks/github-api.js#L3
 function getHeadSHA(context) {
-  if (isPR(context)) {
-    return context.payload.pull_request.head.sha;
-  }
-  return context.sha;
+    if (isPR(context)) {
+        return context.payload.pull_request.head.sha;
+    }
+    return context.sha;
 }
-
-async function sendInitialCheck(context) {
-  const check = await octokit.checks.create({
-    owner: context.repo.owner,
-    repo: context.repo.repo,
-    head_sha: getHeadSHA(context),
-    name: CHECK_NAME,
-    status: "in_progress",
-    started_at: new Date()
-  });
-  core.debug(`Check ID is ${check.data.id}`);
-  return check.data.id;
+function sendInitialCheck(context) {
+    return __awaiter(this, void 0, void 0, function () {
+        var check;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, octokit.checks.create({
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        head_sha: getHeadSHA(context),
+                        name: CHECK_NAME,
+                        status: "in_progress",
+                        started_at: new Date()
+                    })];
+                case 1:
+                    check = _a.sent();
+                    core.debug("Check ID is " + check.data.id);
+                    return [2 /*return*/, check.data.id];
+            }
+        });
+    });
 }
-
-const VELOCIRAPTOR_MEME_URLS = [
-  'https://i.imgur.com/wV7InR8.gif'
-]
-
+var VELOCIRAPTOR_MEME_URLS = [
+    'https://i.imgur.com/wV7InR8.gif'
+];
 function getVelociraptorMemes() {
- return VELOCIRAPTOR_MEME_URLS.map(url => {
-   return {
-     image_url: url,
-     alt: 'velociraptor meme'
-   };
-  });
+    return VELOCIRAPTOR_MEME_URLS.map(function (url) {
+        return {
+            image_url: url,
+            alt: 'velociraptor meme'
+        };
+    });
 }
-
-async function getAddedGotos(context){
-  const files = await getChangedCFiles(context);
-  if (files.length == 0) {
-    return [];
-  }
-  const gotos = runClangTidy(files.map(f => f.filename));
-  return gotos;
+function getAddedGotos(context) {
+    return __awaiter(this, void 0, void 0, function () {
+        var files, gotos;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0: return [4 /*yield*/, getChangedCFiles(context)];
+                case 1:
+                    files = _a.sent();
+                    if (files.length == 0) {
+                        return [2 /*return*/, []];
+                    }
+                    gotos = runClangTidy(files.map(function (f) { return f.filename; }));
+                    return [2 /*return*/, gotos];
+            }
+        });
+    });
 }
-
 function makeResults(gotos) {
-  core.debug(`gotos: ${JSON.stringify(gotos)}`);
-  if (gotos.length == 0) {
-    core.setOutput('gotos', 'False');
-    return {
-      conclusion: 'success',
-      output: {
-        title: "No gotos added.",
-        summary: "You got away this time."
-      }
+    core.debug("gotos: " + JSON.stringify(gotos));
+    if (gotos.length == 0) {
+        core.setOutput('gotos', 'False');
+        return {
+            conclusion: 'success',
+            output: {
+                title: "No gotos added.",
+                summary: "You got away this time."
+            }
+        };
     }
-  } else {
-    core.setOutput('gotos', 'True');
-    return {
-      conclusion: 'failure',
-      output: {
-        title: 'Velociraptors incoming!',
-        summary: 'gotos were added!',
-        images: getVelociraptorMemes().slice(0, 1),
-        annotations: []
-      }
+    else {
+        core.setOutput('gotos', 'True');
+        return {
+            conclusion: 'failure',
+            output: {
+                title: 'Velociraptors incoming!',
+                summary: 'gotos were added!',
+                images: getVelociraptorMemes().slice(0, 1),
+                annotations: []
+            }
+        };
     }
-  }
 }
-
-async function completeCheck(context, check_id, results) {
-  const options = {
-    owner: context.repo.owner,
-    repo: context.repo.repo,
-    check_run_id: check_id,
-    status: 'completed',
-    conclusion: results.conclusion,
-    completed_at: new Date(),
-    output: results.output
-  }
-  core.debug(`Check update request options: ${JSON.stringify(options)}`);
-  return await octokit.checks.update(options);
+function completeCheck(context, check_id, results) {
+    return __awaiter(this, void 0, void 0, function () {
+        var options;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    options = {
+                        owner: context.repo.owner,
+                        repo: context.repo.repo,
+                        check_run_id: check_id,
+                        status: 'completed',
+                        conclusion: results.conclusion,
+                        completed_at: new Date(),
+                        output: results.output
+                    };
+                    core.debug("Check update request options: " + JSON.stringify(options));
+                    return [4 /*yield*/, octokit.checks.update(options)];
+                case 1: return [2 /*return*/, _a.sent()];
+            }
+        });
+    });
 }
-
-const ERROR_SUMMARY = `Something went wrong internally in the check.
-
-Please file an issue against this [action](https://github.com/NickCrews/gotoraptor/issues/new)`
-
-const ERROR_RESULT = {
-  conclusion: 'failure',
-  output: {
-    title: 'The check errored',
-    summary: ERROR_SUMMARY
-  }
+var ERROR_SUMMARY = "Something went wrong internally in the check.\n\nPlease file an issue against this [action](https://github.com/NickCrews/gotoraptor/issues/new)";
+var ERROR_RESULT = {
+    conclusion: 'failure',
+    output: {
+        title: 'The check errored',
+        summary: ERROR_SUMMARY
+    }
+};
+function run(context) {
+    return __awaiter(this, void 0, void 0, function () {
+        var check_id, gotos, results, error_1;
+        return __generator(this, function (_a) {
+            switch (_a.label) {
+                case 0:
+                    core.debug(JSON.stringify(context.payload));
+                    core.debug("Running on a " + (isPR(context) ? 'PR' : 'push') + " event.");
+                    return [4 /*yield*/, sendInitialCheck(context)];
+                case 1:
+                    check_id = _a.sent();
+                    _a.label = 2;
+                case 2:
+                    _a.trys.push([2, 5, , 7]);
+                    return [4 /*yield*/, getAddedGotos(context)];
+                case 3:
+                    gotos = _a.sent();
+                    results = makeResults(gotos);
+                    return [4 /*yield*/, completeCheck(context, check_id, results)];
+                case 4:
+                    _a.sent();
+                    return [3 /*break*/, 7];
+                case 5:
+                    error_1 = _a.sent();
+                    core.setFailed(error_1.message);
+                    core.error(error_1.stack);
+                    return [4 /*yield*/, completeCheck(context, check_id, ERROR_RESULT)];
+                case 6:
+                    _a.sent();
+                    process.exit(1);
+                    return [3 /*break*/, 7];
+                case 7: return [2 /*return*/];
+            }
+        });
+    });
 }
-
-async function run(context) {
-  core.debug(JSON.stringify(context.payload));
-  core.debug(`Running on a ${isPR(context) ? 'PR' : 'push'} event.`);
-  const check_id = await sendInitialCheck(context);
-  try {
-    const gotos = await getAddedGotos(context);
-    const results = makeResults(gotos)
-    await completeCheck(context, check_id, results);
-  } catch (error) {
-    core.setFailed(error.message);
-    core.error(error.stack);
-    await completeCheck(context, check_id, ERROR_RESULT);
-    process.exit(1);
-  }
-}
-
 run(github.context);
 
 
