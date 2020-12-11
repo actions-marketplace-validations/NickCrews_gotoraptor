@@ -6,7 +6,6 @@ const proc = require('child_process');
 const core = require('@actions/core');
 const github = require('@actions/github');
 
-const { GITHUB_WORKSPACE } = process.env;
 const TOKEN = core.getInput("github-token", { required: true });
 const octokit = github.getOctokit(TOKEN);
 
