@@ -2,7 +2,7 @@ require('./sourcemap-register.js');module.exports =
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 932:
+/***/ 822:
 /***/ (function(__unused_webpack_module, __unused_webpack_exports, __webpack_require__) {
 
 // docs.github.com/v3/checks
@@ -15,99 +15,69 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var __generator = (this && this.__generator) || function (thisArg, body) {
-    var _ = { label: 0, sent: function() { if (t[0] & 1) throw t[1]; return t[1]; }, trys: [], ops: [] }, f, y, t, g;
-    return g = { next: verb(0), "throw": verb(1), "return": verb(2) }, typeof Symbol === "function" && (g[Symbol.iterator] = function() { return this; }), g;
-    function verb(n) { return function (v) { return step([n, v]); }; }
-    function step(op) {
-        if (f) throw new TypeError("Generator is already executing.");
-        while (_) try {
-            if (f = 1, y && (t = op[0] & 2 ? y["return"] : op[0] ? y["throw"] || ((t = y["return"]) && t.call(y), 0) : y.next) && !(t = t.call(y, op[1])).done) return t;
-            if (y = 0, t) op = [op[0] & 2, t.value];
-            switch (op[0]) {
-                case 0: case 1: t = op; break;
-                case 4: _.label++; return { value: op[1], done: false };
-                case 5: _.label++; y = op[1]; op = [0]; continue;
-                case 7: op = _.ops.pop(); _.trys.pop(); continue;
-                default:
-                    if (!(t = _.trys, t = t.length > 0 && t[t.length - 1]) && (op[0] === 6 || op[0] === 2)) { _ = 0; continue; }
-                    if (op[0] === 3 && (!t || (op[1] > t[0] && op[1] < t[3]))) { _.label = op[1]; break; }
-                    if (op[0] === 6 && _.label < t[1]) { _.label = t[1]; t = op; break; }
-                    if (t && _.label < t[2]) { _.label = t[2]; _.ops.push(op); break; }
-                    if (t[2]) _.ops.pop();
-                    _.trys.pop(); continue;
-            }
-            op = body.call(thisArg, _);
-        } catch (e) { op = [6, e]; y = 0; } finally { f = t = 0; }
-        if (op[0] & 5) throw op[1]; return { value: op[0] ? op[1] : void 0, done: true };
-    }
-};
-var path = __webpack_require__(622);
-var proc = __webpack_require__(129);
-var core = __webpack_require__(186);
-var github = __webpack_require__(438);
-var GITHUB_WORKSPACE = process.env.GITHUB_WORKSPACE;
-var TOKEN = core.getInput("github-token", { required: true });
-var octokit = github.getOctokit(TOKEN);
-var clang_tools_bin_dir = __webpack_require__(124);
-var CHECK_NAME = 'Goto Velociraptor Check';
+const path = __webpack_require__(622);
+const proc = __webpack_require__(129);
+const core = __webpack_require__(186);
+const github = __webpack_require__(438);
+const TOKEN = core.getInput("github-token", { required: true });
+const octokit = github.getOctokit(TOKEN);
+const clang_tools_bin_dir = __webpack_require__(124);
+const CHECK_NAME = "Goto Velociraptor Check";
 function getChangedCFiles(context) {
-    return __awaiter(this, void 0, void 0, function () {
-        var files, response, response, changedStatuses, changedFiles, pattern, changedCFiles;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    if (!isPR(context)) return [3 /*break*/, 2];
-                    return [4 /*yield*/, octokit.pulls.listFiles({
-                            owner: context.repo.owner,
-                            repo: context.repo.repo,
-                            pull_number: context.payload.pull_request.number,
-                            page: 0,
-                            per_page: 300
-                        })];
-                case 1:
-                    response = _a.sent();
-                    files = response.data;
-                    return [3 /*break*/, 4];
-                case 2: return [4 /*yield*/, octokit.repos.getCommit({
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        ref: getHeadSHA(context)
-                    })];
-                case 3:
-                    response = _a.sent();
-                    files = response.data.files;
-                    _a.label = 4;
-                case 4:
-                    core.debug("All touched files: " + files.map(function (f) { return f.filename; }));
-                    changedStatuses = ['added', 'modified', 'renamed'];
-                    changedFiles = files.filter(function (f) { return changedStatuses.includes(f.status); });
-                    core.debug("Files with changes: " + changedFiles.map(function (f) { return f.filename; }));
-                    pattern = /.*\.[ch](p{2})?$/;
-                    changedCFiles = changedFiles.filter(function (f) { return f.filename.match(pattern); });
-                    core.debug("Changed C/C++ files: " + changedCFiles.map(function (f) { return f.filename; }));
-                    return [2 /*return*/, changedCFiles];
-            }
-        });
+    return __awaiter(this, void 0, void 0, function* () {
+        let files;
+        if (isPR(context)) {
+            // See https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-pull-requests-files
+            const response = yield octokit.pulls.listFiles({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.pull_request.number,
+                page: 0,
+                per_page: 300,
+            });
+            files = response.data;
+        }
+        else {
+            // See https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#get-a-commit
+            const response = yield octokit.repos.getCommit({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: getHeadSHA(context),
+            });
+            files = response.data.files;
+        }
+        core.debug(`All touched files: ${files.map((f) => f.filename)}`);
+        // The possible values of GitHub file statuses per
+        // https://github.com/jitterbit/get-changed-files/blob/b17fbb00bdc0c0f63fcf166580804b4d2cdc2a42/src/main.ts#L5
+        // type FileStatus = 'added' | 'modified' | 'removed' | 'renamed'
+        const changedStatuses = ["added", "modified", "renamed"];
+        const changedFiles = files.filter((f) => changedStatuses.includes(f.status));
+        core.debug(`Files with changes: ${changedFiles.map((f) => f.filename)}`);
+        // regex for c, cc, h, hpp
+        const pattern = /.*\.[ch](p{2})?$/;
+        const changedCFiles = changedFiles.filter((f) => f.filename.match(pattern));
+        core.debug(`Changed C/C++ files: ${changedCFiles.map((f) => f.filename)}`);
+        return changedCFiles;
     });
 }
 function runClangTidy(filenames) {
-    var clang_tidy_path = path.join(clang_tools_bin_dir, 'clang-tidy');
-    var GITHUB_WORKSPACE = process.env.GITHUB_WORKSPACE;
-    var args = process.argv.slice(2)
-        .concat('-checks=-*,cppcoreguidelines-avoid-goto')
+    const clang_tidy_path = path.join(clang_tools_bin_dir, "clang-tidy");
+    const { GITHUB_WORKSPACE } = process.env;
+    const args = process.argv
+        .slice(2)
+        .concat("-checks=-*,cppcoreguidelines-avoid-goto")
         .concat(filenames);
-    core.debug("clang-tidy args: " + args);
-    var child = proc.spawnSync(clang_tidy_path, args, {
-        stdio: 'inherit',
+    core.debug(`clang-tidy args: ${args}`);
+    const child = proc.spawnSync(clang_tidy_path, args, {
+        stdio: "inherit",
         cwd: GITHUB_WORKSPACE,
-        timeout: 30 * 1000
+        timeout: 30 * 1000,
     });
-    core.debug("Ran clang-tidy: " + JSON.stringify(child));
+    core.debug(`Ran clang-tidy: ${JSON.stringify(child)}`);
     if (child.status) {
-        throw new Error("clang-tidy failed: " + JSON.stringify(child));
+        throw new Error(`clang-tidy failed: ${JSON.stringify(child)}`);
     }
-    core.debug("clang-tidy stdout: " + child.stdout);
+    core.debug(`clang-tidy stdout: ${child.stdout}`);
     return child.stdout;
 }
 function isPR(context) {
@@ -122,143 +92,104 @@ function getHeadSHA(context) {
     return context.sha;
 }
 function sendInitialCheck(context) {
-    return __awaiter(this, void 0, void 0, function () {
-        var check;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, octokit.checks.create({
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        head_sha: getHeadSHA(context),
-                        name: CHECK_NAME,
-                        status: "in_progress",
-                        started_at: new Date()
-                    })];
-                case 1:
-                    check = _a.sent();
-                    core.debug("Check ID is " + check.data.id);
-                    return [2 /*return*/, check.data.id];
-            }
+    return __awaiter(this, void 0, void 0, function* () {
+        const check = yield octokit.checks.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            head_sha: getHeadSHA(context),
+            name: CHECK_NAME,
+            status: "in_progress",
+            started_at: new Date(),
         });
+        core.debug(`Check ID is ${check.data.id}`);
+        return check.data.id;
     });
 }
-var VELOCIRAPTOR_MEME_URLS = [
-    'https://i.imgur.com/wV7InR8.gif'
-];
+const VELOCIRAPTOR_MEME_URLS = ["https://i.imgur.com/wV7InR8.gif"];
 function getVelociraptorMemes() {
-    return VELOCIRAPTOR_MEME_URLS.map(function (url) {
+    return VELOCIRAPTOR_MEME_URLS.map((url) => {
         return {
             image_url: url,
-            alt: 'velociraptor meme'
+            alt: "velociraptor meme",
         };
     });
 }
 function getAddedGotos(context) {
-    return __awaiter(this, void 0, void 0, function () {
-        var files, gotos;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0: return [4 /*yield*/, getChangedCFiles(context)];
-                case 1:
-                    files = _a.sent();
-                    if (files.length == 0) {
-                        return [2 /*return*/, []];
-                    }
-                    gotos = runClangTidy(files.map(function (f) { return f.filename; }));
-                    return [2 /*return*/, gotos];
-            }
-        });
+    return __awaiter(this, void 0, void 0, function* () {
+        const files = yield getChangedCFiles(context);
+        if (files.length == 0) {
+            return [];
+        }
+        const gotos = runClangTidy(files.map((f) => f.filename));
+        return gotos;
     });
 }
 function makeResults(gotos) {
-    core.debug("gotos: " + JSON.stringify(gotos));
+    core.debug(`gotos: ${JSON.stringify(gotos)}`);
     if (gotos.length == 0) {
-        core.setOutput('gotos', 'False');
+        core.setOutput("gotos", "False");
         return {
-            conclusion: 'success',
+            conclusion: "success",
             output: {
                 title: "No gotos added.",
-                summary: "You got away this time."
-            }
+                summary: "You got away this time.",
+            },
         };
     }
     else {
-        core.setOutput('gotos', 'True');
+        core.setOutput("gotos", "True");
         return {
-            conclusion: 'failure',
+            conclusion: "failure",
             output: {
-                title: 'Velociraptors incoming!',
-                summary: 'gotos were added!',
+                title: "Velociraptors incoming!",
+                summary: "gotos were added!",
                 images: getVelociraptorMemes().slice(0, 1),
-                annotations: []
-            }
+                annotations: [],
+            },
         };
     }
 }
 function completeCheck(context, check_id, results) {
-    return __awaiter(this, void 0, void 0, function () {
-        var options;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    options = {
-                        owner: context.repo.owner,
-                        repo: context.repo.repo,
-                        check_run_id: check_id,
-                        status: 'completed',
-                        conclusion: results.conclusion,
-                        completed_at: new Date(),
-                        output: results.output
-                    };
-                    core.debug("Check update request options: " + JSON.stringify(options));
-                    return [4 /*yield*/, octokit.checks.update(options)];
-                case 1: return [2 /*return*/, _a.sent()];
-            }
-        });
+    return __awaiter(this, void 0, void 0, function* () {
+        const options = {
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            check_run_id: check_id,
+            status: "completed",
+            conclusion: results.conclusion,
+            completed_at: new Date(),
+            output: results.output,
+        };
+        core.debug(`Check update request options: ${JSON.stringify(options)}`);
+        return yield octokit.checks.update(options);
     });
 }
-var ERROR_SUMMARY = "Something went wrong internally in the check.\n\nPlease file an issue against this [action](https://github.com/NickCrews/gotoraptor/issues/new)";
-var ERROR_RESULT = {
-    conclusion: 'failure',
+const ERROR_SUMMARY = `Something went wrong internally in the check.
+
+Please file an issue against this [action](https://github.com/NickCrews/gotoraptor/issues/new)`;
+const ERROR_RESULT = {
+    conclusion: "failure",
     output: {
-        title: 'The check errored',
-        summary: ERROR_SUMMARY
-    }
+        title: "The check errored",
+        summary: ERROR_SUMMARY,
+    },
 };
 function run(context) {
-    return __awaiter(this, void 0, void 0, function () {
-        var check_id, gotos, results, error_1;
-        return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    core.debug(JSON.stringify(context.payload));
-                    core.debug("Running on a " + (isPR(context) ? 'PR' : 'push') + " event.");
-                    return [4 /*yield*/, sendInitialCheck(context)];
-                case 1:
-                    check_id = _a.sent();
-                    _a.label = 2;
-                case 2:
-                    _a.trys.push([2, 5, , 7]);
-                    return [4 /*yield*/, getAddedGotos(context)];
-                case 3:
-                    gotos = _a.sent();
-                    results = makeResults(gotos);
-                    return [4 /*yield*/, completeCheck(context, check_id, results)];
-                case 4:
-                    _a.sent();
-                    return [3 /*break*/, 7];
-                case 5:
-                    error_1 = _a.sent();
-                    core.setFailed(error_1.message);
-                    core.error(error_1.stack);
-                    return [4 /*yield*/, completeCheck(context, check_id, ERROR_RESULT)];
-                case 6:
-                    _a.sent();
-                    process.exit(1);
-                    return [3 /*break*/, 7];
-                case 7: return [2 /*return*/];
-            }
-        });
+    return __awaiter(this, void 0, void 0, function* () {
+        core.debug(JSON.stringify(context.payload));
+        core.debug(`Running on a ${isPR(context) ? "PR" : "push"} event.`);
+        const check_id = yield sendInitialCheck(context);
+        try {
+            const gotos = yield getAddedGotos(context);
+            const results = makeResults(gotos);
+            yield completeCheck(context, check_id, results);
+        }
+        catch (error) {
+            core.setFailed(error.message);
+            core.error(error.stack);
+            yield completeCheck(context, check_id, ERROR_RESULT);
+            process.exit(1);
+        }
     });
 }
 run(github.context);
@@ -3568,7 +3499,7 @@ Object.defineProperty(exports, "__esModule", ({ value: true }));
 
 function _interopDefault (ex) { return (ex && (typeof ex === 'object') && 'default' in ex) ? ex['default'] : ex; }
 
-var deprecation = __webpack_require__(481);
+var deprecation = __webpack_require__(932);
 var once = _interopDefault(__webpack_require__(223));
 
 const logOnce = once(deprecation => console.warn(deprecation));
@@ -4008,7 +3939,7 @@ module.exports = __webpack_require__.ab + "bin"
 
 /***/ }),
 
-/***/ 481:
+/***/ 932:
 /***/ ((__unused_webpack_module, exports) => {
 
 "use strict";
@@ -6246,7 +6177,7 @@ module.exports = require("zlib");;
 /******/ 	// module exports must be returned from runtime so entry inlining is disabled
 /******/ 	// startup
 /******/ 	// Load entry module and return exports
-/******/ 	return __webpack_require__(932);
+/******/ 	return __webpack_require__(822);
 /******/ })()
 ;
 //# sourceMappingURL=index.js.map
