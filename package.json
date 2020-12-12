@@ -10,8 +10,12 @@
     "format-check": "prettier --check **/*.ts",
     "test": "jest",
     "package": "ncc build lib/index.js -o dist --source-map --license licenses.txt",
-    "all": "npm run build && npm run lint && npm run format && npm run package && npm run test"
+    "all": "npm run build && npm run lint && npm run format && npm run package && npm run test",
+    "precommit": "echo 'Running recommit checks...' && npm run all"
   },
+  "pre-commit": [
+    "precommit"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/NickCrews/gotoraptor.git"
@@ -39,6 +43,7 @@
     "eslint": "^7.15.0",
     "jest": "^24.9.0",
     "jest-circus": "^26.4.2",
+    "pre-commit": "^1.2.2",
     "prettier": "2.2.1",
     "ts-jest": "^26.4.4",
     "typescript": "^4.1.2"
