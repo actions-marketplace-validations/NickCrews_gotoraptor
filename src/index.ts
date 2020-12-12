@@ -167,7 +167,7 @@ const ERROR_RESULT = {
 };
 
 async function run(context) {
-  core.debug(JSON.stringify(context.payload));
+  core.debug(JSON.stringify(context));
   core.debug(`Running on a ${isPR(context) ? "PR" : "push"} event.`);
   const check_id = await sendInitialCheck(context);
   try {

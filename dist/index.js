@@ -176,7 +176,7 @@ const ERROR_RESULT = {
 };
 function run(context) {
     return __awaiter(this, void 0, void 0, function* () {
-        core.debug(JSON.stringify(context.payload));
+        core.debug(JSON.stringify(context));
         core.debug(`Running on a ${isPR(context) ? "PR" : "push"} event.`);
         const check_id = yield sendInitialCheck(context);
         try {
