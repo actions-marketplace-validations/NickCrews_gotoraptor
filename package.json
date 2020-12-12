@@ -2,7 +2,7 @@
   "name": "gotoraptor",
   "version": "1.0.0",
   "description": "GitHub Action that sends velociraptors when `goto`s are added. xkcd.com/292",
-  "main": "index.js",
+  "main": "lib/index.js",
   "scripts": {
     "build": "tsc",
     "lint": "eslint **/*.ts",
