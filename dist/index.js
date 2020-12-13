@@ -21,12 +21,12 @@ const path = __webpack_require__(622);
 const proc = __webpack_require__(129);
 const core = __webpack_require__(186);
 const github = __webpack_require__(438);
-const TOKEN = core.getInput("github-token", { required: true });
-const octokit = github.getOctokit(TOKEN);
+const { Octokit } = __webpack_require__(762);
 const clang_tools_bin_dir = __webpack_require__(124);
 const CHECK_NAME = "Goto Velociraptor Check";
 function loadContext() {
     const is_pr = github.context.eventName == "pull_request";
+    const token = core.getInput("github-token", { required: true });
     return {
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
@@ -37,6 +37,7 @@ function loadContext() {
         sha: is_pr
             ? github.context.payload.pull_request.head.sha
             : github.context.sha,
+        octokit: github.getOctokit(token),
     };
 }
 function getChangedCFiles(context) {
@@ -44,7 +45,7 @@ function getChangedCFiles(context) {
         let files;
         if (context.is_pr) {
             // See https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-pull-requests-files
-            const response = yield octokit.pulls.listFiles({
+            const response = yield context.octokit.pulls.listFiles({
                 owner: context.owner,
                 repo: context.repo,
                 pull_number: context.pull_number,
@@ -55,7 +56,7 @@ function getChangedCFiles(context) {
         }
         else {
             // See https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#get-a-commit
-            const response = yield octokit.repos.getCommit({
+            const response = yield context.octokit.repos.getCommit({
                 owner: context.owner,
                 repo: context.repo,
                 ref: context.sha,
@@ -98,7 +99,7 @@ function runClangTidy(filenames) {
 }
 function sendInitialCheck(context) {
     return __awaiter(this, void 0, void 0, function* () {
-        const check = yield octokit.checks.create({
+        const check = yield context.octokit.checks.create({
             owner: context.owner,
             repo: context.repo,
             head_sha: context.sha,
@@ -166,7 +167,7 @@ function completeCheck(context, check_id, result) {
             output: result.output,
         };
         core.debug(`Check update request options: ${JSON.stringify(options)}`);
-        yield octokit.checks.update(options);
+        yield context.octokit.checks.update(options);
     });
 }
 const ERROR_SUMMARY = `Something went wrong internally in the check.

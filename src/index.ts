@@ -5,9 +5,7 @@ const proc = require("child_process");
 
 const core = require("@actions/core");
 const github = require("@actions/github");
-
-const TOKEN = core.getInput("github-token", { required: true });
-const octokit = github.getOctokit(TOKEN);
+const { Octokit } = require("@octokit/core");
 
 const clang_tools_bin_dir = require("clang-tools-prebuilt");
 
@@ -26,10 +24,12 @@ interface MyContext {
   is_pr: boolean;
   pull_number: number;
   sha: string;
+  octokit: typeof Octokit;
 }
 
 function loadContext(): MyContext {
   const is_pr = github.context.eventName == "pull_request";
+  const token = core.getInput("github-token", { required: true });
   return {
     owner: github.context.repo.owner,
     repo: github.context.repo.repo,
@@ -40,6 +40,7 @@ function loadContext(): MyContext {
     sha: is_pr
       ? github.context.payload.pull_request.head.sha
       : github.context.sha,
+    octokit: github.getOctokit(token),
   };
 }
 
@@ -47,7 +48,7 @@ async function getChangedCFiles(context: MyContext): Promise<File[]> {
   let files;
   if (context.is_pr) {
     // See https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-pull-requests-files
-    const response = await octokit.pulls.listFiles({
+    const response = await context.octokit.pulls.listFiles({
       owner: context.owner,
       repo: context.repo,
       pull_number: context.pull_number,
@@ -57,7 +58,7 @@ async function getChangedCFiles(context: MyContext): Promise<File[]> {
     files = response.data as File[];
   } else {
     // See https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#get-a-commit
-    const response = await octokit.repos.getCommit({
+    const response = await context.octokit.repos.getCommit({
       owner: context.owner,
       repo: context.repo,
       ref: context.sha,
@@ -100,7 +101,7 @@ function runClangTidy(filenames: string[]): string {
 }
 
 async function sendInitialCheck(context: MyContext): Promise<number> {
-  const check = await octokit.checks.create({
+  const check = await context.octokit.checks.create({
     owner: context.owner,
     repo: context.repo,
     head_sha: context.sha,
@@ -207,7 +208,7 @@ async function completeCheck(
     output: result.output,
   };
   core.debug(`Check update request options: ${JSON.stringify(options)}`);
-  await octokit.checks.update(options);
+  await context.octokit.checks.update(options);
 }
 
 const ERROR_SUMMARY = `Something went wrong internally in the check.
