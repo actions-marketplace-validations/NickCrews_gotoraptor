@@ -2,8 +2,8 @@ require('./sourcemap-register.js');module.exports =
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
-/***/ 822:
-/***/ (function(__unused_webpack_module, __unused_webpack_exports, __webpack_require__) {
+/***/ 675:
+/***/ (function(__unused_webpack_module, exports, __webpack_require__) {
 
 "use strict";
 
@@ -17,6 +17,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+exports.run = exports.loadContext = void 0;
 const path = __webpack_require__(622);
 const proc = __webpack_require__(129);
 const core = __webpack_require__(186);
@@ -40,6 +42,7 @@ function loadContext() {
         octokit: github.getOctokit(token),
     };
 }
+exports.loadContext = loadContext;
 function getChangedCFiles(context) {
     return __awaiter(this, void 0, void 0, function* () {
         let files;
@@ -198,7 +201,19 @@ function run(context) {
         }
     });
 }
-run(loadContext());
+exports.run = run;
+
+
+/***/ }),
+
+/***/ 822:
+/***/ ((__unused_webpack_module, exports, __webpack_require__) => {
+
+"use strict";
+
+Object.defineProperty(exports, "__esModule", ({ value: true }));
+const gotoraptor_1 = __webpack_require__(675);
+gotoraptor_1.run(gotoraptor_1.loadContext());
 
 
 /***/ }),
