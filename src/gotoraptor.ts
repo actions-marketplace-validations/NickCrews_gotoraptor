@@ -209,6 +209,7 @@ async function completeCheck(
   };
   core.debug(`Check update request options: ${JSON.stringify(options)}`);
   await context.octokit.checks.update(options);
+  core.debug(`Successfully completed check.`);
 }
 
 const ERROR_SUMMARY = `Something went wrong internally in the check.

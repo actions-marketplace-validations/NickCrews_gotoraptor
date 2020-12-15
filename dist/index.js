@@ -171,6 +171,7 @@ function completeCheck(context, check_id, result) {
         };
         core.debug(`Check update request options: ${JSON.stringify(options)}`);
         yield context.octokit.checks.update(options);
+        core.debug(`Successfully completed check.`);
     });
 }
 const ERROR_SUMMARY = `Something went wrong internally in the check.
