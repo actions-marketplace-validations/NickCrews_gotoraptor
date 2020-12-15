@@ -13,26 +13,56 @@ const clang_tools_bin_dir = require("clang-tools-prebuilt");
 
 const CHECK_NAME = "Goto Velociraptor Check";
 
-async function getChangedCFiles(context) {
+interface File {
+  filename: string;
+  // The possible values of GitHub file statuses per
+  // https://github.com/jitterbit/get-changed-files/blob/b17fbb00bdc0c0f63fcf166580804b4d2cdc2a42/src/main.ts#L5
+  status: "added" | "modified" | "removed" | "renamed";
+}
+
+interface MyContext {
+  owner: string;
+  repo: string;
+  is_pr: boolean;
+  pull_number: number;
+  sha: string;
+}
+
+function loadContext(): MyContext {
+  const is_pr = github.context.eventName == "pull_request";
+  return {
+    owner: github.context.repo.owner,
+    repo: github.context.repo.repo,
+    is_pr: is_pr,
+    pull_number: is_pr ? github.context.payload.pull_request.number : undefined,
+    // If we're on a PR, use the sha from the payload to prevent Ghost Check Runs
+    // from https://github.com/IgnusG/jest-report-action/blob/de40d98e24f18a77e637762c8d2a1751edfbcc44/tasks/github-api.js#L3
+    sha: is_pr
+      ? github.context.payload.pull_request.head.sha
+      : github.context.sha,
+  };
+}
+
+async function getChangedCFiles(context: MyContext): Promise<File[]> {
   let files;
-  if (isPR(context)) {
+  if (context.is_pr) {
     // See https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-pull-requests-files
     const response = await octokit.pulls.listFiles({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      pull_number: context.payload.pull_request.number,
+      owner: context.owner,
+      repo: context.repo,
+      pull_number: context.pull_number,
       page: 0,
       per_page: 300,
     });
-    files = response.data;
+    files = response.data as File[];
   } else {
     // See https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#get-a-commit
     const response = await octokit.repos.getCommit({
-      owner: context.repo.owner,
-      repo: context.repo.repo,
-      ref: getHeadSHA(context),
+      owner: context.owner,
+      repo: context.repo,
+      ref: context.sha,
     });
-    files = response.data.files;
+    files = response.data.files as File[];
   }
   core.debug(`All touched files: ${files.map((f) => f.filename)}`);
   // The possible values of GitHub file statuses per
@@ -48,7 +78,7 @@ async function getChangedCFiles(context) {
   return changedCFiles;
 }
 
-function runClangTidy(filenames) {
+function runClangTidy(filenames: string[]): string {
   const clang_tidy_path = path.join(clang_tools_bin_dir, "clang-tidy");
   const { GITHUB_WORKSPACE } = process.env;
   const args = process.argv
@@ -69,24 +99,11 @@ function runClangTidy(filenames) {
   return child.stdout;
 }
 
-function isPR(context) {
-  return Boolean(context.payload.pull_request);
-}
-
-// If we're on a PR, use the sha from the payload to prevent Ghost Check Runs
-// from https://github.com/IgnusG/jest-report-action/blob/de40d98e24f18a77e637762c8d2a1751edfbcc44/tasks/github-api.js#L3
-function getHeadSHA(context) {
-  if (isPR(context)) {
-    return context.payload.pull_request.head.sha;
-  }
-  return context.sha;
-}
-
-async function sendInitialCheck(context) {
+async function sendInitialCheck(context: MyContext): Promise<number> {
   const check = await octokit.checks.create({
-    owner: context.repo.owner,
-    repo: context.repo.repo,
-    head_sha: getHeadSHA(context),
+    owner: context.owner,
+    repo: context.repo,
+    head_sha: context.sha,
     name: CHECK_NAME,
     status: "in_progress",
     started_at: new Date(),
@@ -97,7 +114,13 @@ async function sendInitialCheck(context) {
 
 const VELOCIRAPTOR_MEME_URLS = ["https://i.imgur.com/wV7InR8.gif"];
 
-function getVelociraptorMemes() {
+interface Image {
+  alt: string;
+  image_url: string;
+  caption?: string;
+}
+
+function getVelociraptorMemes(): Image[] {
   return VELOCIRAPTOR_MEME_URLS.map((url) => {
     return {
       image_url: url,
@@ -106,16 +129,45 @@ function getVelociraptorMemes() {
   });
 }
 
-async function getAddedGotos(context) {
-  const files = await getChangedCFiles(context);
+async function getAddedGotos(context: MyContext): Promise<Goto[]> {
+  const files: File[] = await getChangedCFiles(context);
   if (files.length == 0) {
     return [];
   }
-  const gotos = runClangTidy(files.map((f) => f.filename));
-  return gotos;
+  runClangTidy(files.map((f) => f.filename));
+  return [];
 }
 
-function makeResults(gotos) {
+interface Result {
+  conclusion: "success" | "failure";
+  output: {
+    title: string;
+    summary: string;
+    images?: Image[];
+    annotations?: {
+      path: string;
+      start_line: number;
+      end_line: number;
+      /**
+       * The start column of the annotation. Annotations only support `start_column` and `end_column` on the same line. Omit this parameter if `start_line` and `end_line` have different values.
+       */
+      start_column?: number;
+      end_column?: number;
+      annotation_level: "notice" | "warning" | "failure";
+      message: string;
+      title?: string;
+      raw_details?: string;
+    }[];
+  };
+}
+
+interface Goto {
+  path: string;
+  start_line: number;
+  end_line: number;
+}
+
+function makeResult(gotos: Goto[]): Result {
   core.debug(`gotos: ${JSON.stringify(gotos)}`);
   if (gotos.length == 0) {
     core.setOutput("gotos", "False");
@@ -140,25 +192,29 @@ function makeResults(gotos) {
   }
 }
 
-async function completeCheck(context, check_id, results) {
+async function completeCheck(
+  context: MyContext,
+  check_id: number,
+  result: Result
+) {
   const options = {
-    owner: context.repo.owner,
-    repo: context.repo.repo,
+    owner: context.owner,
+    repo: context.repo,
     check_run_id: check_id,
     status: "completed",
-    conclusion: results.conclusion,
+    conclusion: result.conclusion,
     completed_at: new Date(),
-    output: results.output,
+    output: result.output,
   };
   core.debug(`Check update request options: ${JSON.stringify(options)}`);
-  return await octokit.checks.update(options);
+  await octokit.checks.update(options);
 }
 
 const ERROR_SUMMARY = `Something went wrong internally in the check.
 
 Please file an issue against this [action](https://github.com/NickCrews/gotoraptor/issues/new)`;
 
-const ERROR_RESULT = {
+const ERROR_RESULT: Result = {
   conclusion: "failure",
   output: {
     title: "The check errored",
@@ -166,14 +222,14 @@ const ERROR_RESULT = {
   },
 };
 
-async function run(context) {
+async function run(context: MyContext) {
   core.debug(JSON.stringify(context));
-  core.debug(`Running on a ${isPR(context) ? "PR" : "push"} event.`);
+  core.debug(`Running on a ${context.is_pr ? "PR" : "push"} event.`);
   const check_id = await sendInitialCheck(context);
   try {
     const gotos = await getAddedGotos(context);
-    const results = makeResults(gotos);
-    await completeCheck(context, check_id, results);
+    const result = makeResult(gotos);
+    await completeCheck(context, check_id, result);
   } catch (error) {
     core.setFailed(error.message);
     core.error(error.stack);
@@ -182,4 +238,4 @@ async function run(context) {
   }
 }
 
-run(github.context);
+run(loadContext());

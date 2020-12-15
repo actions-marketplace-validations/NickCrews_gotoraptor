@@ -5,6 +5,8 @@ require('./sourcemap-register.js');module.exports =
 /***/ 822:
 /***/ (function(__unused_webpack_module, __unused_webpack_exports, __webpack_require__) {
 
+"use strict";
+
 // docs.github.com/v3/checks
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
@@ -23,15 +25,29 @@ const TOKEN = core.getInput("github-token", { required: true });
 const octokit = github.getOctokit(TOKEN);
 const clang_tools_bin_dir = __webpack_require__(124);
 const CHECK_NAME = "Goto Velociraptor Check";
+function loadContext() {
+    const is_pr = github.context.eventName == "pull_request";
+    return {
+        owner: github.context.repo.owner,
+        repo: github.context.repo.repo,
+        is_pr: is_pr,
+        pull_number: is_pr ? github.context.payload.pull_request.number : undefined,
+        // If we're on a PR, use the sha from the payload to prevent Ghost Check Runs
+        // from https://github.com/IgnusG/jest-report-action/blob/de40d98e24f18a77e637762c8d2a1751edfbcc44/tasks/github-api.js#L3
+        sha: is_pr
+            ? github.context.payload.pull_request.head.sha
+            : github.context.sha,
+    };
+}
 function getChangedCFiles(context) {
     return __awaiter(this, void 0, void 0, function* () {
         let files;
-        if (isPR(context)) {
+        if (context.is_pr) {
             // See https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-pull-requests-files
             const response = yield octokit.pulls.listFiles({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: context.payload.pull_request.number,
+                owner: context.owner,
+                repo: context.repo,
+                pull_number: context.pull_number,
                 page: 0,
                 per_page: 300,
             });
@@ -40,9 +56,9 @@ function getChangedCFiles(context) {
         else {
             // See https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#get-a-commit
             const response = yield octokit.repos.getCommit({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: getHeadSHA(context),
+                owner: context.owner,
+                repo: context.repo,
+                ref: context.sha,
             });
             files = response.data.files;
         }
@@ -80,23 +96,12 @@ function runClangTidy(filenames) {
     core.debug(`clang-tidy stdout: ${child.stdout}`);
     return child.stdout;
 }
-function isPR(context) {
-    return Boolean(context.payload.pull_request);
-}
-// If we're on a PR, use the sha from the payload to prevent Ghost Check Runs
-// from https://github.com/IgnusG/jest-report-action/blob/de40d98e24f18a77e637762c8d2a1751edfbcc44/tasks/github-api.js#L3
-function getHeadSHA(context) {
-    if (isPR(context)) {
-        return context.payload.pull_request.head.sha;
-    }
-    return context.sha;
-}
 function sendInitialCheck(context) {
     return __awaiter(this, void 0, void 0, function* () {
         const check = yield octokit.checks.create({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            head_sha: getHeadSHA(context),
+            owner: context.owner,
+            repo: context.repo,
+            head_sha: context.sha,
             name: CHECK_NAME,
             status: "in_progress",
             started_at: new Date(),
@@ -120,11 +125,11 @@ function getAddedGotos(context) {
         if (files.length == 0) {
             return [];
         }
-        const gotos = runClangTidy(files.map((f) => f.filename));
-        return gotos;
+        runClangTidy(files.map((f) => f.filename));
+        return [];
     });
 }
-function makeResults(gotos) {
+function makeResult(gotos) {
     core.debug(`gotos: ${JSON.stringify(gotos)}`);
     if (gotos.length == 0) {
         core.setOutput("gotos", "False");
@@ -149,19 +154,19 @@ function makeResults(gotos) {
         };
     }
 }
-function completeCheck(context, check_id, results) {
+function completeCheck(context, check_id, result) {
     return __awaiter(this, void 0, void 0, function* () {
         const options = {
-            owner: context.repo.owner,
-            repo: context.repo.repo,
+            owner: context.owner,
+            repo: context.repo,
             check_run_id: check_id,
             status: "completed",
-            conclusion: results.conclusion,
+            conclusion: result.conclusion,
             completed_at: new Date(),
-            output: results.output,
+            output: result.output,
         };
         core.debug(`Check update request options: ${JSON.stringify(options)}`);
-        return yield octokit.checks.update(options);
+        yield octokit.checks.update(options);
     });
 }
 const ERROR_SUMMARY = `Something went wrong internally in the check.
@@ -177,12 +182,12 @@ const ERROR_RESULT = {
 function run(context) {
     return __awaiter(this, void 0, void 0, function* () {
         core.debug(JSON.stringify(context));
-        core.debug(`Running on a ${isPR(context) ? "PR" : "push"} event.`);
+        core.debug(`Running on a ${context.is_pr ? "PR" : "push"} event.`);
         const check_id = yield sendInitialCheck(context);
         try {
             const gotos = yield getAddedGotos(context);
-            const results = makeResults(gotos);
-            yield completeCheck(context, check_id, results);
+            const result = makeResult(gotos);
+            yield completeCheck(context, check_id, result);
         }
         catch (error) {
             core.setFailed(error.message);
@@ -192,7 +197,7 @@ function run(context) {
         }
     });
 }
-run(github.context);
+run(loadContext());
 
 
 /***/ }),
