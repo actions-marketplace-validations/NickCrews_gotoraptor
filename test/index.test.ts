@@ -16,7 +16,7 @@
 
 const { Octokit } = require("@octokit/core");
 
-import { run, MyContext } from "../src/gotoraptor";
+import * as gtr from "../src/gotoraptor";
 
 const MOCK_OWNER = "mockowner";
 const MOCK_REPO = "mockrepo";
@@ -59,7 +59,7 @@ test("e2e with file-less PR", async () => {
       id: MOCK_CHECK_ID,
     },
   });
-  const ctx: MyContext = {
+  const ctx: gtr.MyContext = {
     owner: MOCK_OWNER,
     repo: MOCK_REPO,
     is_pr: true,
@@ -67,7 +67,7 @@ test("e2e with file-less PR", async () => {
     sha: MOCK_SHA,
     octokit: mocktokit,
   };
-  await run(ctx);
+  await gtr.run(ctx);
 
   expect(mocktokit.checks.create.mock.calls).toHaveLength(1);
   const createCheckArgs = mocktokit.checks.create.mock.calls[0][0];
