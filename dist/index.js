@@ -8,6 +8,25 @@ require('./sourcemap-register.js');module.exports =
 "use strict";
 
 // docs.github.com/v3/checks
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -19,26 +38,25 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 exports.run = exports.loadContext = void 0;
-const path = __webpack_require__(622);
-const proc = __webpack_require__(129);
-const core = __webpack_require__(186);
-const github = __webpack_require__(438);
-const { Octokit } = __webpack_require__(762);
+const path = __importStar(__webpack_require__(622));
+const proc = __importStar(__webpack_require__(129));
+const core = __importStar(__webpack_require__(186));
+const github = __importStar(__webpack_require__(438));
 const clang_tools_bin_dir = __webpack_require__(124);
 const CHECK_NAME = "Goto Velociraptor Check";
 function loadContext() {
+    var _a, _b;
     const is_pr = github.context.eventName == "pull_request";
     const token = core.getInput("github-token", { required: true });
     return {
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
         is_pr: is_pr,
-        pull_number: is_pr ? github.context.payload.pull_request.number : undefined,
+        pull_number: is_pr ? (_a = github.context.payload.pull_request) === null || _a === void 0 ? void 0 : _a.number : undefined,
         // If we're on a PR, use the sha from the payload to prevent Ghost Check Runs
         // from https://github.com/IgnusG/jest-report-action/blob/de40d98e24f18a77e637762c8d2a1751edfbcc44/tasks/github-api.js#L3
         sha: is_pr
-            ? github.context.payload.pull_request.head.sha
-            : github.context.sha,
+            ? (_b = github.context.payload.pull_request) === null || _b === void 0 ? void 0 : _b.head.sha : github.context.sha,
         octokit: github.getOctokit(token),
     };
 }
@@ -98,7 +116,7 @@ function runClangTidy(filenames) {
         throw new Error(`clang-tidy failed: ${JSON.stringify(child)}`);
     }
     core.debug(`clang-tidy stdout: ${child.stdout}`);
-    return child.stdout;
+    return child.stdout.toString();
 }
 function sendInitialCheck(context) {
     return __awaiter(this, void 0, void 0, function* () {

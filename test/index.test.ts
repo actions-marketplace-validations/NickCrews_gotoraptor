@@ -14,7 +14,7 @@
 //   console.log(cp.execFileSync(np, [ip], options).toString())
 // })
 
-const { Octokit } = require("@octokit/core");
+import { Octokit } from "@octokit/core";
 
 import * as gtr from "../src/gotoraptor";
 

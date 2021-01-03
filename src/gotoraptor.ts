@@ -1,11 +1,11 @@
 // docs.github.com/v3/checks
 
-const path = require("path");
-const proc = require("child_process");
+import * as path from "path";
+import * as proc from "child_process";
 
-const core = require("@actions/core");
-const github = require("@actions/github");
-const { Octokit } = require("@octokit/core");
+import * as core from "@actions/core";
+import * as github from "@actions/github";
+import { Octokit } from "@octokit/core";
 
 const clang_tools_bin_dir = require("clang-tools-prebuilt");
 
@@ -22,9 +22,9 @@ export interface MyContext {
   owner: string;
   repo: string;
   is_pr: boolean;
-  pull_number: number;
+  pull_number: number | undefined;
   sha: string;
-  octokit: typeof Octokit;
+  octokit: Octokit;
 }
 
 export function loadContext(): MyContext {
@@ -34,11 +34,13 @@ export function loadContext(): MyContext {
     owner: github.context.repo.owner,
     repo: github.context.repo.repo,
     is_pr: is_pr,
-    pull_number: is_pr ? github.context.payload.pull_request.number : undefined,
+    pull_number: is_pr
+      ? github.context.payload.pull_request?.number
+      : undefined,
     // If we're on a PR, use the sha from the payload to prevent Ghost Check Runs
     // from https://github.com/IgnusG/jest-report-action/blob/de40d98e24f18a77e637762c8d2a1751edfbcc44/tasks/github-api.js#L3
     sha: is_pr
-      ? github.context.payload.pull_request.head.sha
+      ? github.context.payload.pull_request?.head.sha
       : github.context.sha,
     octokit: github.getOctokit(token),
   };
@@ -97,7 +99,7 @@ function runClangTidy(filenames: string[]): string {
     throw new Error(`clang-tidy failed: ${JSON.stringify(child)}`);
   }
   core.debug(`clang-tidy stdout: ${child.stdout}`);
-  return child.stdout;
+  return child.stdout.toString();
 }
 
 async function sendInitialCheck(context: MyContext): Promise<number> {
