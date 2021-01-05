@@ -52,7 +52,8 @@ function loadContext() {
         owner: github.context.repo.owner,
         repo: github.context.repo.repo,
         is_pr: is_pr,
-        pull_number: is_pr ? (_a = github.context.payload.pull_request) === null || _a === void 0 ? void 0 : _a.number : undefined,
+        pull_number: is_pr
+            ? (_a = github.context.payload.pull_request) === null || _a === void 0 ? void 0 : _a.number : undefined,
         // If we're on a PR, use the sha from the payload to prevent Ghost Check Runs
         // from https://github.com/IgnusG/jest-report-action/blob/de40d98e24f18a77e637762c8d2a1751edfbcc44/tasks/github-api.js#L3
         sha: is_pr
@@ -66,23 +67,30 @@ function getChangedCFiles(context) {
         let files;
         if (context.is_pr) {
             // See https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-pull-requests-files
-            const response = yield context.octokit.pulls.listFiles({
+            const params = {
                 owner: context.owner,
                 repo: context.repo,
                 pull_number: context.pull_number,
                 page: 0,
                 per_page: 300,
-            });
+            };
+            const response = yield context.octokit.pulls.listFiles(params);
             files = response.data;
         }
         else {
             // See https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#get-a-commit
-            const response = yield context.octokit.repos.getCommit({
+            const params = {
                 owner: context.owner,
                 repo: context.repo,
                 ref: context.sha,
-            });
-            files = response.data.files;
+            };
+            const response = yield context.octokit.repos.getCommit(params);
+            if (response.data.files) {
+                files = response.data.files;
+            }
+            else {
+                files = [];
+            }
         }
         core.debug(`All touched files: ${files.map((f) => f.filename)}`);
         // The possible values of GitHub file statuses per
@@ -120,14 +128,15 @@ function runClangTidy(filenames) {
 }
 function sendInitialCheck(context) {
     return __awaiter(this, void 0, void 0, function* () {
-        const check = yield context.octokit.checks.create({
+        const params = {
             owner: context.owner,
             repo: context.repo,
             head_sha: context.sha,
             name: CHECK_NAME,
             status: "in_progress",
-            started_at: new Date(),
-        });
+            started_at: new Date().toISOString(),
+        };
+        const check = yield context.octokit.checks.create(params);
         core.debug(`Check ID is ${check.data.id}`);
         return check.data.id;
     });
@@ -184,7 +193,7 @@ function completeCheck(context, check_id, result) {
             check_run_id: check_id,
             status: "completed",
             conclusion: result.conclusion,
-            completed_at: new Date(),
+            completed_at: new Date().toISOString(),
             output: result.output,
         };
         core.debug(`Check update request options: ${JSON.stringify(options)}`);

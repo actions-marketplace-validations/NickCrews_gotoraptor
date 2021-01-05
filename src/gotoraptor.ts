@@ -6,23 +6,40 @@ import * as proc from "child_process";
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { Octokit } from "@octokit/core";
+import { Endpoints } from "@octokit/types";
+
+// used in octokit.checks.create()
+// https://docs.github.com/rest/reference/checks#create-a-check-run
+export type ChecksCreateParams = Endpoints["POST /repos/{owner}/{repo}/check-runs"]["parameters"];
+export type ChecksCreateResponse = Endpoints["POST /repos/{owner}/{repo}/check-runs"]["response"];
+
+// used in octokit.checks.update()
+// https://docs.github.com/rest/reference/checks#update-a-check-run
+export type ChecksUpdateParams = Endpoints["PATCH /repos/{owner}/{repo}/check-runs/{check_run_id}"]["parameters"];
+export type ChecksUpdateResponse = Endpoints["PATCH /repos/{owner}/{repo}/check-runs/{check_run_id}"]["response"];
+
+// used in octokit.pulls.listFiles()
+// https://docs.github.com/rest/reference/pulls#list-pull-requests-files
+export type PullsListFilesParams = Endpoints["GET /repos/{owner}/{repo}/pulls/{pull_number}/files"]["parameters"];
+export type PullsListFilesResponse = Endpoints["GET /repos/{owner}/{repo}/pulls/{pull_number}/files"]["response"];
+
+// used in octokit.repos.getCommit()
+// https://docs.github.com/rest/reference/repos#get-a-commit
+export type ReposGetCommitParams = Endpoints["GET /repos/{owner}/{repo}/commits/{ref}"]["parameters"];
+export type ReposGetCommitResponse = Endpoints["GET /repos/{owner}/{repo}/commits/{ref}"]["response"];
 
 const clang_tools_bin_dir = require("clang-tools-prebuilt");
 
 const CHECK_NAME = "Goto Velociraptor Check";
 
-interface File {
-  filename: string;
-  // The possible values of GitHub file statuses per
-  // https://github.com/jitterbit/get-changed-files/blob/b17fbb00bdc0c0f63fcf166580804b4d2cdc2a42/src/main.ts#L5
-  status: "added" | "modified" | "removed" | "renamed";
-}
-
+// Basically a way to contain global variables in one object, so that custom
+// values can be injected into the main function for testing.
+// In production these inputs are read in from the environment.
 export interface MyContext {
   owner: string;
   repo: string;
   is_pr: boolean;
-  pull_number: number | undefined;
+  pull_number?: number;
   sha: string;
   octokit: Octokit;
 }
@@ -46,26 +63,46 @@ export function loadContext(): MyContext {
   };
 }
 
+// Info about one file changed in a commit or in a PR.
+export interface File {
+  filename: string;
+  // The possible values of GitHub file statuses per
+  // https://github.com/jitterbit/get-changed-files/blob/b17fbb00bdc0c0f63fcf166580804b4d2cdc2a42/src/main.ts#L5
+  // status: "added" | "modified" | "removed" | "renamed";
+  status: string;
+  patch?: string;
+}
+
 async function getChangedCFiles(context: MyContext): Promise<File[]> {
-  let files;
+  let files: File[];
   if (context.is_pr) {
     // See https://docs.github.com/en/free-pro-team@latest/rest/reference/pulls#list-pull-requests-files
-    const response = await context.octokit.pulls.listFiles({
+    const params: PullsListFilesParams = {
       owner: context.owner,
       repo: context.repo,
-      pull_number: context.pull_number,
+      pull_number: context.pull_number as number,
       page: 0,
       per_page: 300,
-    });
-    files = response.data as File[];
+    };
+    const response: PullsListFilesResponse = await context.octokit.pulls.listFiles(
+      params
+    );
+    files = response.data;
   } else {
     // See https://docs.github.com/en/free-pro-team@latest/rest/reference/repos#get-a-commit
-    const response = await context.octokit.repos.getCommit({
+    const params: ReposGetCommitParams = {
       owner: context.owner,
       repo: context.repo,
       ref: context.sha,
-    });
-    files = response.data.files as File[];
+    };
+    const response: ReposGetCommitResponse = await context.octokit.repos.getCommit(
+      params
+    );
+    if (response.data.files) {
+      files = response.data.files as File[];
+    } else {
+      files = [];
+    }
   }
   core.debug(`All touched files: ${files.map((f) => f.filename)}`);
   // The possible values of GitHub file statuses per
@@ -103,14 +140,17 @@ function runClangTidy(filenames: string[]): string {
 }
 
 async function sendInitialCheck(context: MyContext): Promise<number> {
-  const check = await context.octokit.checks.create({
+  const params: ChecksCreateParams = {
     owner: context.owner,
     repo: context.repo,
     head_sha: context.sha,
     name: CHECK_NAME,
     status: "in_progress",
-    started_at: new Date(),
-  });
+    started_at: new Date().toISOString(),
+  };
+  const check: ChecksCreateResponse = await context.octokit.checks.create(
+    params
+  );
   core.debug(`Check ID is ${check.data.id}`);
   return check.data.id;
 }
@@ -200,13 +240,13 @@ async function completeCheck(
   check_id: number,
   result: Result
 ) {
-  const options = {
+  const options: ChecksUpdateParams = {
     owner: context.owner,
     repo: context.repo,
     check_run_id: check_id,
     status: "completed",
     conclusion: result.conclusion,
-    completed_at: new Date(),
+    completed_at: new Date().toISOString(),
     output: result.output,
   };
   core.debug(`Check update request options: ${JSON.stringify(options)}`);
