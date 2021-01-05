@@ -150,7 +150,7 @@ function getVelociraptorMemes() {
         };
     });
 }
-function getAddedGotos(context) {
+function getAnnotations(context) {
     return __awaiter(this, void 0, void 0, function* () {
         const files = yield getChangedCFiles(context);
         if (files.length == 0) {
@@ -160,9 +160,9 @@ function getAddedGotos(context) {
         return [];
     });
 }
-function makeResult(gotos) {
-    core.debug(`gotos: ${JSON.stringify(gotos)}`);
-    if (gotos.length == 0) {
+function makeResult(annotations) {
+    core.debug(`gotos: ${JSON.stringify(annotations)}`);
+    if (annotations.length == 0) {
         core.setOutput("gotos", "False");
         return {
             conclusion: "success",
@@ -180,7 +180,7 @@ function makeResult(gotos) {
                 title: "Velociraptors incoming!",
                 summary: "gotos were added!",
                 images: getVelociraptorMemes().slice(0, 1),
-                annotations: [],
+                annotations: annotations,
             },
         };
     }
@@ -217,8 +217,8 @@ function run(context) {
         core.debug(`Running on a ${context.is_pr ? "PR" : "push"} event.`);
         const check_id = yield sendInitialCheck(context);
         try {
-            const gotos = yield getAddedGotos(context);
-            const result = makeResult(gotos);
+            const annotations = yield getAnnotations(context);
+            const result = makeResult(annotations);
             yield completeCheck(context, check_id, result);
         }
         catch (error) {

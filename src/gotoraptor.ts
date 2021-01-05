@@ -118,6 +118,17 @@ async function getChangedCFiles(context: MyContext): Promise<File[]> {
   return changedCFiles;
 }
 
+// Annotation for each goto added, sent to GitHub as part of a `check`.
+// See https://docs.github.com/rest/reference/checks#create-a-check-run
+export interface Annotation {
+  path: string;
+  start_line: number;
+  end_line: number;
+  annotation_level: "notice" | "warning" | "failure";
+  message: string;
+  title: string;
+}
+
 function runClangTidy(filenames: string[]): string {
   const clang_tidy_path = path.join(clang_tools_bin_dir, "clang-tidy");
   const { GITHUB_WORKSPACE } = process.env;
@@ -172,7 +183,7 @@ function getVelociraptorMemes(): Image[] {
   });
 }
 
-async function getAddedGotos(context: MyContext): Promise<Goto[]> {
+async function getAnnotations(context: MyContext): Promise<Annotation[]> {
   const files: File[] = await getChangedCFiles(context);
   if (files.length == 0) {
     return [];
@@ -187,32 +198,13 @@ interface Result {
     title: string;
     summary: string;
     images?: Image[];
-    annotations?: {
-      path: string;
-      start_line: number;
-      end_line: number;
-      /**
-       * The start column of the annotation. Annotations only support `start_column` and `end_column` on the same line. Omit this parameter if `start_line` and `end_line` have different values.
-       */
-      start_column?: number;
-      end_column?: number;
-      annotation_level: "notice" | "warning" | "failure";
-      message: string;
-      title?: string;
-      raw_details?: string;
-    }[];
+    annotations?: Annotation[];
   };
 }
 
-interface Goto {
-  path: string;
-  start_line: number;
-  end_line: number;
-}
-
-function makeResult(gotos: Goto[]): Result {
-  core.debug(`gotos: ${JSON.stringify(gotos)}`);
-  if (gotos.length == 0) {
+function makeResult(annotations: Annotation[]): Result {
+  core.debug(`gotos: ${JSON.stringify(annotations)}`);
+  if (annotations.length == 0) {
     core.setOutput("gotos", "False");
     return {
       conclusion: "success",
@@ -229,7 +221,7 @@ function makeResult(gotos: Goto[]): Result {
         title: "Velociraptors incoming!",
         summary: "gotos were added!",
         images: getVelociraptorMemes().slice(0, 1),
-        annotations: [],
+        annotations: annotations,
       },
     };
   }
@@ -271,8 +263,8 @@ export async function run(context: MyContext): Promise<void> {
   core.debug(`Running on a ${context.is_pr ? "PR" : "push"} event.`);
   const check_id = await sendInitialCheck(context);
   try {
-    const gotos = await getAddedGotos(context);
-    const result = makeResult(gotos);
+    const annotations = await getAnnotations(context);
+    const result = makeResult(annotations);
     await completeCheck(context, check_id, result);
   } catch (error) {
     core.setFailed(error.message);
