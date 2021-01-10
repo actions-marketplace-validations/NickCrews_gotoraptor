@@ -425,7 +425,7 @@ test("e2e with file-less PR", async () => {
   expect(completeCheckArgs.conclusion).toEqual("success");
   expect(completeCheckArgs.output).toEqual({
     title: "No gotos added.",
-    summary: "You got away this time.",
+    summary: "You got away this time. xckcd.com/292",
   });
   // TODO: check that @actions/core.setOutput('false') was called
 });

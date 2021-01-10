@@ -7,7 +7,6 @@ require('./sourcemap-register.js');module.exports =
 
 "use strict";
 
-// docs.github.com/v3/checks
 var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
     if (k2 === undefined) k2 = k;
     Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
@@ -43,7 +42,6 @@ const core = __importStar(__webpack_require__(2186));
 const github = __importStar(__webpack_require__(5438));
 // Stuff to parse patches to find added gotos
 const diff_1 = __webpack_require__(1672);
-const CHECK_NAME = "Goto Velociraptor Check";
 function loadContext() {
     var _a, _b;
     const is_pr = github.context.eventName == "pull_request";
@@ -176,7 +174,7 @@ function sendInitialCheck(context) {
             owner: context.owner,
             repo: context.repo,
             head_sha: context.sha,
-            name: CHECK_NAME,
+            name: "Goto Velociraptor Check",
             status: "in_progress",
             started_at: new Date().toISOString(),
         };
@@ -202,7 +200,7 @@ function makeResult(annotations) {
             conclusion: "success",
             output: {
                 title: "No gotos added.",
-                summary: "You got away this time.",
+                summary: "You got away this time. xckcd.com/292",
             },
         };
     }
@@ -212,7 +210,7 @@ function makeResult(annotations) {
             conclusion: "failure",
             output: {
                 title: "Velociraptors incoming!",
-                summary: "gotos were added!",
+                summary: "gotos were added! xckcd.com/292",
                 images: getVelociraptorMemes().slice(0, 1),
                 annotations: annotations,
             },

@@ -1,5 +1,3 @@
-// docs.github.com/v3/checks
-
 // GitHub and GitHub Actions stuff
 import * as core from "@actions/core";
 import * as github from "@actions/github";
@@ -33,8 +31,6 @@ export type PullsListFilesResponse = Endpoints["GET /repos/{owner}/{repo}/pulls/
 // https://docs.github.com/rest/reference/repos#get-a-commit
 export type ReposGetCommitParams = Endpoints["GET /repos/{owner}/{repo}/commits/{ref}"]["parameters"];
 export type ReposGetCommitResponse = Endpoints["GET /repos/{owner}/{repo}/commits/{ref}"]["response"];
-
-const CHECK_NAME = "Goto Velociraptor Check";
 
 // Basically a way to contain global variables in one object, so that custom
 // values can be injected into the main function for testing.
@@ -206,7 +202,7 @@ async function sendInitialCheck(context: MyContext): Promise<number> {
     owner: context.owner,
     repo: context.repo,
     head_sha: context.sha,
-    name: CHECK_NAME,
+    name: "Goto Velociraptor Check",
     status: "in_progress",
     started_at: new Date().toISOString(),
   };
@@ -252,7 +248,7 @@ function makeResult(annotations: Annotation[]): Result {
       conclusion: "success",
       output: {
         title: "No gotos added.",
-        summary: "You got away this time.",
+        summary: "You got away this time. xckcd.com/292",
       },
     };
   } else {
@@ -261,7 +257,7 @@ function makeResult(annotations: Annotation[]): Result {
       conclusion: "failure",
       output: {
         title: "Velociraptors incoming!",
-        summary: "gotos were added!",
+        summary: "gotos were added! xckcd.com/292",
         images: getVelociraptorMemes().slice(0, 1),
         annotations: annotations,
       },
