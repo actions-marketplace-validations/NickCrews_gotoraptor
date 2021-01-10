@@ -1,49 +1,7 @@
-// import * as cp from 'child_process'
-// import * as path from 'path'
-
-// shows how the runner will run a javascript action with env / stdout protocol
-// test('test runs', () => {
-//   const env = {
-//     INPUT_GITHUB_TOKEN: 'MOCK_TOKEN',
-//   };
-//   const np = process.execPath
-//   const ip = path.join(__dirname, "..", "dist", 'index.js');
-//   const options: cp.ExecFileSyncOptions = {
-//     env: env
-//   }
-//   console.log(cp.execFileSync(np, [ip], options).toString())
-// })
-
+import * as core from "@actions/core";
 import { Octokit } from "@octokit/core";
 
 import * as gtr from "../src/gotoraptor";
-
-const MOCK_OWNER = "mockowner";
-const MOCK_REPO = "mockrepo";
-const MOCK_PULL_NUMBER = 42;
-const MOCK_SHA = "0123456789abcdef0123456789abcdef01234567";
-const MOCK_CHECK_ID = 123;
-
-class Mocktokit extends Octokit {
-  pulls = {
-    listFiles: jest.fn(),
-  };
-  checks = {
-    create: jest.fn(),
-    update: jest.fn(),
-  };
-  repos = {
-    getCommit: jest.fn(),
-  };
-}
-const mocktokit = new Mocktokit();
-
-beforeEach(() => {
-  mocktokit.pulls.listFiles.mockClear();
-  mocktokit.checks.create.mockClear();
-  mocktokit.checks.update.mockClear();
-  mocktokit.repos.getCommit.mockClear();
-});
 
 describe("hunksInFile() unit tests", () => {
   it("Extracts FileHunks from File", () => {
@@ -378,54 +336,103 @@ describe("getAnnotations() unit tests", () => {
   });
 });
 
-test("e2e with file-less PR", async () => {
-  mocktokit.pulls.listFiles.mockReturnValueOnce({
-    // TODO: somehow this doesn't crash the program, but it should.
-    data: [{ filename: "bob" }, "hi", 4],
-  });
-  mocktokit.checks.create.mockReturnValueOnce({
+describe("e2e tests", () => {
+  const MOCK_OWNER = "mockowner";
+  const MOCK_REPO = "mockrepo";
+  const MOCK_PULL_NUMBER = 42;
+  const MOCK_SHA = "0123456789abcdef0123456789abcdef01234567";
+  const MOCK_CHECK_ID = 123;
+  const MOCK_CHECK_START_TIME = new Date("2020-01-01T00:00:00.000Z");
+  const MOCK_CHECK_UPDATE_TIME = new Date("2020-01-01T00:00:10.000Z");
+
+  class Mocktokit extends Octokit {
+    pulls = {
+      listFiles: jest.fn(),
+    };
+    checks = {
+      create: jest.fn(),
+      update: jest.fn(),
+    };
+    repos = {
+      getCommit: jest.fn(),
+    };
+  }
+  const mocktokit = new Mocktokit();
+
+  mocktokit.checks.create.mockReturnValue({
     data: {
       id: MOCK_CHECK_ID,
     },
   });
-  const ctx: gtr.MyContext = {
-    owner: MOCK_OWNER,
-    repo: MOCK_REPO,
-    is_pr: true,
-    pull_number: MOCK_PULL_NUMBER,
-    sha: MOCK_SHA,
-    octokit: mocktokit,
-  };
-  await gtr.run(ctx);
 
-  expect(mocktokit.checks.create.mock.calls).toHaveLength(1);
-  const createCheckArgs = mocktokit.checks.create.mock.calls[0][0];
-  expect(createCheckArgs.owner).toEqual(MOCK_OWNER);
-  expect(createCheckArgs.repo).toEqual(MOCK_REPO);
-  expect(createCheckArgs.head_sha).toEqual(MOCK_SHA);
-  expect(createCheckArgs.name).toEqual("Goto Velociraptor Check");
-  expect(createCheckArgs.status).toEqual("in_progress");
+  const coreSetOutput = jest.spyOn(core, "setOutput");
 
-  expect(mocktokit.repos.getCommit.mock.calls).toHaveLength(0);
-
-  expect(mocktokit.pulls.listFiles.mock.calls).toHaveLength(1);
-  const pullsListFilesArgs = mocktokit.pulls.listFiles.mock.calls[0][0];
-  expect(pullsListFilesArgs.owner).toEqual(MOCK_OWNER);
-  expect(pullsListFilesArgs.repo).toEqual(MOCK_REPO);
-  expect(pullsListFilesArgs.pull_number).toEqual(MOCK_PULL_NUMBER);
-  expect(pullsListFilesArgs.page).toEqual(0);
-  expect(pullsListFilesArgs.per_page).toEqual(300);
-
-  expect(mocktokit.checks.update.mock.calls).toHaveLength(1);
-  const completeCheckArgs = mocktokit.checks.update.mock.calls[0][0];
-  expect(completeCheckArgs.owner).toEqual(MOCK_OWNER);
-  expect(completeCheckArgs.repo).toEqual(MOCK_REPO);
-  expect(completeCheckArgs.check_run_id).toEqual(MOCK_CHECK_ID);
-  expect(completeCheckArgs.status).toEqual("completed");
-  expect(completeCheckArgs.conclusion).toEqual("success");
-  expect(completeCheckArgs.output).toEqual({
-    title: "No gotos added.",
-    summary: "You got away this time. xckcd.com/292",
+  beforeEach(() => {
+    jest.clearAllMocks();
+    // In app code we call Date.now twice. The first time when sending the
+    // initial check, and again when updating the check.
+    jest
+      .spyOn(global.Date, "now")
+      .mockReturnValueOnce(MOCK_CHECK_START_TIME.valueOf())
+      .mockReturnValueOnce(MOCK_CHECK_UPDATE_TIME.valueOf());
   });
-  // TODO: check that @actions/core.setOutput('false') was called
+
+  it("Finds no warnings on PR with only an ignored txt file", async () => {
+    mocktokit.pulls.listFiles.mockReturnValueOnce({
+      // This doesn't strictly match the return type of the real
+      // ocktokit.pulls.listFiles, but it's OK
+      data: [{ filename: "ignored.txt", status: "modified" }],
+    });
+    const ctx: gtr.MyContext = {
+      owner: MOCK_OWNER,
+      repo: MOCK_REPO,
+      is_pr: true,
+      pull_number: MOCK_PULL_NUMBER,
+      sha: MOCK_SHA,
+      octokit: mocktokit,
+    };
+    await gtr.run(ctx);
+
+    // Should send initial request to GitHub to create a Check.
+    expect(mocktokit.checks.create).toHaveBeenCalledTimes(1);
+    expect(mocktokit.checks.create).toHaveBeenCalledWith({
+      owner: MOCK_OWNER,
+      repo: MOCK_REPO,
+      head_sha: MOCK_SHA,
+      name: "Goto Velociraptor Check",
+      status: "in_progress",
+      started_at: MOCK_CHECK_START_TIME.toISOString(),
+    });
+
+    // It's a PR, so we shouldn't have requested a specific commit.
+    expect(mocktokit.repos.getCommit).toHaveBeenCalledTimes(0);
+
+    // Should have requested info about a PR.
+    expect(mocktokit.pulls.listFiles).toHaveBeenCalledTimes(1);
+    expect(mocktokit.pulls.listFiles).toHaveBeenCalledWith({
+      owner: MOCK_OWNER,
+      repo: MOCK_REPO,
+      pull_number: MOCK_PULL_NUMBER,
+      page: 0,
+      per_page: 300,
+    });
+
+    // Should have completed our earlier check.
+    expect(mocktokit.checks.update).toHaveBeenCalledTimes(1);
+    expect(mocktokit.checks.update).toHaveBeenCalledWith({
+      owner: MOCK_OWNER,
+      repo: MOCK_REPO,
+      check_run_id: MOCK_CHECK_ID,
+      status: "completed",
+      conclusion: "success",
+      completed_at: MOCK_CHECK_UPDATE_TIME.toISOString(),
+      output: {
+        title: "No gotos added.",
+        summary: "You got away this time. xckcd.com/292",
+      },
+    });
+
+    expect(coreSetOutput).toHaveBeenCalledTimes(1);
+    expect(coreSetOutput).toHaveBeenCalledWith("gotos", "False");
+  });
 });

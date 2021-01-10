@@ -204,7 +204,7 @@ async function sendInitialCheck(context: MyContext): Promise<number> {
     head_sha: context.sha,
     name: "Goto Velociraptor Check",
     status: "in_progress",
-    started_at: new Date().toISOString(),
+    started_at: new Date(Date.now()).toISOString(),
   };
   const check: ChecksCreateResponse = await context.octokit.checks.create(
     params
@@ -276,7 +276,7 @@ async function completeCheck(
     check_run_id: check_id,
     status: "completed",
     conclusion: result.conclusion,
-    completed_at: new Date().toISOString(),
+    completed_at: new Date(Date.now()).toISOString(),
     output: result.output,
   };
   core.debug(`Check update request options: ${JSON.stringify(options)}`);

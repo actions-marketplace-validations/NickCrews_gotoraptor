@@ -176,7 +176,7 @@ function sendInitialCheck(context) {
             head_sha: context.sha,
             name: "Goto Velociraptor Check",
             status: "in_progress",
-            started_at: new Date().toISOString(),
+            started_at: new Date(Date.now()).toISOString(),
         };
         const check = yield context.octokit.checks.create(params);
         core.debug(`Check ID is ${check.data.id}`);
@@ -225,7 +225,7 @@ function completeCheck(context, check_id, result) {
             check_run_id: check_id,
             status: "completed",
             conclusion: result.conclusion,
-            completed_at: new Date().toISOString(),
+            completed_at: new Date(Date.now()).toISOString(),
             output: result.output,
         };
         core.debug(`Check update request options: ${JSON.stringify(options)}`);
