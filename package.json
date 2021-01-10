@@ -34,9 +34,10 @@
   "dependencies": {
     "@actions/core": "^1.2.5",
     "@actions/github": "^4.0.0",
-    "clang-tools-prebuilt": "^0.1.4"
+    "diff": "^5.0.0"
   },
   "devDependencies": {
+    "@types/diff": "^5.0.0",
     "@types/jest": "^26.0.15",
     "@types/node": "^14.14.16",
     "@typescript-eslint/parser": "^4.12.0",

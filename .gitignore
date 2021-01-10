@@ -1,13 +1,5 @@
 node_modules/
 
-# Unneeded binaries installed by `clang-tools-prebuilt` node package
-# after running `npm run prepare`, which uses ncc to build a distro.
-# We just need dist/bin/clang-tidy
-dist/bin/clang-apply-replacements
-dist/bin/clang-include-fixer
-dist/bin/clang-rename
-dist/bin/find-all-symbols
-
 # Compiled version, all we care about is the .ts source
 /lib
 

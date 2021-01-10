@@ -1,12 +1,18 @@
 // docs.github.com/v3/checks
 
-import * as path from "path";
-import * as proc from "child_process";
-
+// GitHub and GitHub Actions stuff
 import * as core from "@actions/core";
 import * as github from "@actions/github";
 import { Octokit } from "@octokit/core";
 import { Endpoints } from "@octokit/types";
+
+// Stuff to parse patches to find added gotos
+import { Hunk, ParsedDiff, parsePatch } from "diff";
+
+// The Hunk type from "diff" doesn't keep track of the file, but we need that.
+export interface FileHunk extends Hunk {
+  filename: string;
+}
 
 // used in octokit.checks.create()
 // https://docs.github.com/rest/reference/checks#create-a-check-run
@@ -27,8 +33,6 @@ export type PullsListFilesResponse = Endpoints["GET /repos/{owner}/{repo}/pulls/
 // https://docs.github.com/rest/reference/repos#get-a-commit
 export type ReposGetCommitParams = Endpoints["GET /repos/{owner}/{repo}/commits/{ref}"]["parameters"];
 export type ReposGetCommitResponse = Endpoints["GET /repos/{owner}/{repo}/commits/{ref}"]["response"];
-
-const clang_tools_bin_dir = require("clang-tools-prebuilt");
 
 const CHECK_NAME = "Goto Velociraptor Check";
 
@@ -129,25 +133,72 @@ export interface Annotation {
   title: string;
 }
 
-function runClangTidy(filenames: string[]): string {
-  const clang_tidy_path = path.join(clang_tools_bin_dir, "clang-tidy");
-  const { GITHUB_WORKSPACE } = process.env;
-  const args = process.argv
-    .slice(2)
-    .concat("-checks=-*,cppcoreguidelines-avoid-goto")
-    .concat(filenames);
-  core.debug(`clang-tidy args: ${args}`);
-  const child = proc.spawnSync(clang_tidy_path, args, {
-    stdio: "inherit",
-    cwd: GITHUB_WORKSPACE,
-    timeout: 30 * 1000,
-  });
-  core.debug(`Ran clang-tidy: ${JSON.stringify(child)}`);
-  if (child.status) {
-    throw new Error(`clang-tidy failed: ${JSON.stringify(child)}`);
+export function hunksInFile(file: File): FileHunk[] {
+  core.debug(`Finding Hunks in File: ${JSON.stringify(file)}`);
+  if (!file.patch) {
+    return [];
   }
-  core.debug(`clang-tidy stdout: ${child.stdout}`);
-  return child.stdout.toString();
+  core.debug(`patch for this File: ${JSON.stringify(file.patch)}`);
+  const diffs: ParsedDiff[] = parsePatch(file.patch);
+  // Since this is for a single file, there's only one diff in this patch.
+  const firstAndOnlyDiff = diffs[0];
+  const hunks: Hunk[] = firstAndOnlyDiff.hunks;
+
+  let result: FileHunk[] = [];
+  hunks.forEach((hunk) => {
+    const fh: FileHunk = {
+      ...hunk,
+      filename: file.filename,
+    };
+    result.push(fh);
+  });
+  core.debug(`Found these Hunks for this File: ${JSON.stringify(result)}`);
+  return result;
+}
+
+export function containsGoto(line: string): boolean {
+  // [either start of line or semicolon], 0+ whitespace, goto, 1+ whitespace,
+  // 1+ word characters (this is the symbol to go to), 0+ whitespace, semicolon
+  const regex = /(^|;)\s*goto\s+\w+\s*;/;
+  return regex.test(line);
+}
+
+export function gotosInHunk(hunk: FileHunk): Annotation[] {
+  let annotations: Annotation[] = [];
+  let lineNumber = hunk.newStart;
+  core.debug(`Finding Gotos in Hunk: ${JSON.stringify(hunk)}`);
+  hunk.lines.forEach((line) => {
+    const lineAdded = line.startsWith("+");
+    if (lineAdded && containsGoto(line.substring(1))) {
+      annotations.push({
+        path: hunk.filename,
+        start_line: lineNumber,
+        end_line: lineNumber,
+        annotation_level: "warning",
+        title: "A goto was added!",
+        message: "Watch out for velociraptors! xckcd.com/292",
+      });
+    }
+    // All lines that weren't removed either were unchanged or added,
+    // and therefore exist in the new file.
+    if (!line.startsWith("-")) {
+      lineNumber += 1;
+    }
+  });
+  core.debug(`Found these Gotos: ${JSON.stringify(annotations)}`);
+  return annotations;
+}
+
+export function getAnnotations(files: File[]): Annotation[] {
+  const hunks: FileHunk[] = [];
+  files.forEach((file) => {
+    hunks.push(...hunksInFile(file));
+  });
+  let annotations: Annotation[] = [];
+  hunks.forEach((hunk) => {
+    annotations.push(...gotosInHunk(hunk));
+  });
+  return annotations;
 }
 
 async function sendInitialCheck(context: MyContext): Promise<number> {
@@ -181,15 +232,6 @@ function getVelociraptorMemes(): Image[] {
       alt: "velociraptor meme",
     };
   });
-}
-
-async function getAnnotations(context: MyContext): Promise<Annotation[]> {
-  const files: File[] = await getChangedCFiles(context);
-  if (files.length == 0) {
-    return [];
-  }
-  runClangTidy(files.map((f) => f.filename));
-  return [];
 }
 
 interface Result {
@@ -263,7 +305,8 @@ export async function run(context: MyContext): Promise<void> {
   core.debug(`Running on a ${context.is_pr ? "PR" : "push"} event.`);
   const check_id = await sendInitialCheck(context);
   try {
-    const annotations = await getAnnotations(context);
+    const files: File[] = await getChangedCFiles(context);
+    const annotations = getAnnotations(files);
     const result = makeResult(annotations);
     await completeCheck(context, check_id, result);
   } catch (error) {
