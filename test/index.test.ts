@@ -149,8 +149,8 @@ describe("gotosInHunk() unit tests", () => {
         start_line: 14,
         end_line: 14,
         annotation_level: "warning",
-        title: "A goto was added!",
-        message: "Watch out for velociraptors! xckcd.com/292",
+        title: "Watch out for velociraptors!",
+        message: "A goto was added! See xkcd.com/292",
       },
     ];
     expect(gtr.gotosInHunk(hunk)).toEqual(expectedAnnotations);
@@ -217,8 +217,8 @@ describe("gotosInHunk() unit tests", () => {
         start_line: 12,
         end_line: 12,
         annotation_level: "warning",
-        title: "A goto was added!",
-        message: "Watch out for velociraptors! xckcd.com/292",
+        title: "Watch out for velociraptors!",
+        message: "A goto was added! See xkcd.com/292",
       },
     ];
     expect(gtr.gotosInHunk(hunk)).toEqual(expectedAnnotations);
@@ -312,24 +312,24 @@ describe("getAnnotations() unit tests", () => {
         start_line: 1,
         end_line: 1,
         annotation_level: "warning",
-        title: "A goto was added!",
-        message: "Watch out for velociraptors! xckcd.com/292",
+        title: "Watch out for velociraptors!",
+        message: "A goto was added! See xkcd.com/292",
       },
       {
         path: "file1.c",
         start_line: 2,
         end_line: 2,
         annotation_level: "warning",
-        title: "A goto was added!",
-        message: "Watch out for velociraptors! xckcd.com/292",
+        title: "Watch out for velociraptors!",
+        message: "A goto was added! See xkcd.com/292",
       },
       {
         path: "file2.c",
         start_line: 3,
         end_line: 3,
         annotation_level: "warning",
-        title: "A goto was added!",
-        message: "Watch out for velociraptors! xckcd.com/292",
+        title: "Watch out for velociraptors!",
+        message: "A goto was added! See xkcd.com/292",
       },
     ];
     expect(gtr.getAnnotations(files)).toEqual(expectedAnnotations);
@@ -428,7 +428,8 @@ describe("e2e tests", () => {
       completed_at: MOCK_CHECK_UPDATE_TIME.toISOString(),
       output: {
         title: "No gotos added.",
-        summary: "You got away this time. xckcd.com/292",
+        summary:
+          "You got away this time. See [relevant xkcd comic](https://xkcd.com/292):\n\n![https://xkcd.com/292](https://imgs.xkcd.com/comics/goto.png)",
       },
     });
 

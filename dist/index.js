@@ -142,8 +142,8 @@ function gotosInHunk(hunk) {
                 start_line: lineNumber,
                 end_line: lineNumber,
                 annotation_level: "warning",
-                title: "A goto was added!",
-                message: "Watch out for velociraptors! xckcd.com/292",
+                title: "Watch out for velociraptors!",
+                message: "A goto was added! See xkcd.com/292",
             });
         }
         // All lines that weren't removed either were unchanged or added,
@@ -183,15 +183,6 @@ function sendInitialCheck(context) {
         return check.data.id;
     });
 }
-const VELOCIRAPTOR_MEME_URLS = ["https://i.imgur.com/wV7InR8.gif"];
-function getVelociraptorMemes() {
-    return VELOCIRAPTOR_MEME_URLS.map((url) => {
-        return {
-            image_url: url,
-            alt: "velociraptor meme",
-        };
-    });
-}
 function makeResult(annotations) {
     core.debug(`gotos: ${JSON.stringify(annotations)}`);
     if (annotations.length == 0) {
@@ -200,7 +191,7 @@ function makeResult(annotations) {
             conclusion: "success",
             output: {
                 title: "No gotos added.",
-                summary: "You got away this time. xckcd.com/292",
+                summary: "You got away this time. See [relevant xkcd comic](https://xkcd.com/292):\n\n![https://xkcd.com/292](https://imgs.xkcd.com/comics/goto.png)",
             },
         };
     }
@@ -210,8 +201,7 @@ function makeResult(annotations) {
             conclusion: "failure",
             output: {
                 title: "Velociraptors incoming!",
-                summary: "gotos were added! xckcd.com/292",
-                images: getVelociraptorMemes().slice(0, 1),
+                summary: "![velociraptor meme](https://i.imgur.com/wV7InR8.gif)\n\nThat's what happens when you add gotos! See [relevant xkcd comic](https://xkcd.com/292):\n\n![https://xkcd.com/292](https://imgs.xkcd.com/comics/goto.png)\n\nSpecific guilty lines are annotated. If something is a mistake, please file an issue against this [action](https://github.com/NickCrews/gotoraptor/issues/new).",
                 annotations: annotations,
             },
         };
