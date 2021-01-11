@@ -1,4 +1,4 @@
-name: "units-test"
+name: "Build and Test"
 on:
   pull_request:
   push:
@@ -7,17 +7,26 @@ on:
       - 'releases/*'
 
 jobs:
-  # unit tests
-  units:
+  build_and_unittest:
+    name: "Build and run unit tests"
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - run: npm ci
-    - run: npm test
+    - run: npm run all
 
-  # test action works running from the graph
-  test:
+  # Run this action (in it's state after running
+  # actions/checkout@v2) against the PR or push event that triggered this
+  # workflow. It's like we're running the action on itself, sorta weird,
+  # since this action shouldn't have any C files or gotos, but it's the
+  # closest to a full end-to-end test we can get.
+  run:
+    name: "Run action against this PR or push"
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+    - name: Dump GitHub context
+      env:
+        GITHUB_CONTEXT: ${{ toJson(github) }}
+      run: echo "$GITHUB_CONTEXT"
     - uses: ./
