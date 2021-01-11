@@ -44,6 +44,7 @@ const github = __importStar(__webpack_require__(5438));
 const diff_1 = __webpack_require__(1672);
 function loadContext() {
     var _a, _b;
+    core.debug(`loadContext() github object: ${JSON.stringify(github)}`);
     const is_pr = github.context.eventName == "pull_request";
     const token = core.getInput("github-token", { required: true });
     return {
@@ -235,8 +236,7 @@ const ERROR_RESULT = {
 };
 function run(context) {
     return __awaiter(this, void 0, void 0, function* () {
-        core.debug(JSON.stringify(context));
-        core.debug(`Running on a ${context.is_pr ? "PR" : "push"} event.`);
+        core.debug(`Received context in run(): ${JSON.stringify(context)}`);
         const check_id = yield sendInitialCheck(context);
         try {
             const files = yield getChangedCFiles(context);

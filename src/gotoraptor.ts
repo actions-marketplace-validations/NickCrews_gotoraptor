@@ -45,6 +45,7 @@ export interface MyContext {
 }
 
 export function loadContext(): MyContext {
+  core.debug(`loadContext() github object: ${JSON.stringify(github)}`);
   const is_pr = github.context.eventName == "pull_request";
   const token = core.getInput("github-token", { required: true });
   return {
@@ -280,8 +281,7 @@ const ERROR_RESULT: Result = {
 };
 
 export async function run(context: MyContext): Promise<void> {
-  core.debug(JSON.stringify(context));
-  core.debug(`Running on a ${context.is_pr ? "PR" : "push"} event.`);
+  core.debug(`Received context in run(): ${JSON.stringify(context)}`);
   const check_id = await sendInitialCheck(context);
   try {
     const files: File[] = await getChangedCFiles(context);
