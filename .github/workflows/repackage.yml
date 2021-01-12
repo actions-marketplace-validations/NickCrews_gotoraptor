@@ -1,0 +1,26 @@
+name: "Re-package after dependabot"
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  repackage:
+    name: "Re-package dist/* and commit after dependabot updates"
+    if: github.actor == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install the new packages.
+        run: npm ci
+      - name: Format, lint, test, and package.
+        run: npm run all
+      - name: Commit updated dist/* files
+        uses: EndBug/add-and-commit@v6
+        with:
+          add: dist
+          author_name: Nick Crews
+          author_email: nicholas.b.crews@gmail.com
+          message: 'Re-package dist/* after updating dependencies'
+      - name: "Ensure there are no other unstaged changes lingering"
+        run: git diff --quiet --exit-code
