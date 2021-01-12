@@ -15,9 +15,14 @@ jobs:
         run: npm ci
       - name: Format, lint, test, and package.
         run: npm run all
+      - name: See what changed
+        run: git status --porcelain
+      - name: Branch name
+        run: echo running on branch ${GITHUB_REF##*/}
       - name: Commit updated dist/* files
         uses: EndBug/add-and-commit@v6
         with:
+          branch: ${GITHUB_REF##*/}
           add: dist
           author_name: Nick Crews
           author_email: nicholas.b.crews@gmail.com
