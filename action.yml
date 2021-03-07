@@ -1,12 +1,15 @@
-name: 'goto-velociraptor'
-description: 'Sends velociraptors if `goto` statements are added. xkcd.com/292'
+name: "gotoraptor"
+description: "Sends velociraptors if `goto` statements are added. xkcd.com/292"
 inputs:
   github-token:
-    description: 'The GITHUB_TOKEN secret'
+    description: "The GITHUB_TOKEN secret"
     default: ${{ github.token }}
 outputs:
   gotos: # output will be available to future steps
-    description: 'Either `True` if a `goto` statement was added, `False` otherwise.'
+    description: "Either `True` if a `goto` statement was added, `False` otherwise."
 runs:
-  using: 'node12'
-  main: 'dist/index.js'
+  using: "node12"
+  main: "dist/index.js"
+branding:
+  icon: "check"
+  color: "orange"
