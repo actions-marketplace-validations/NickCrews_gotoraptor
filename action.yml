@@ -1,4 +1,4 @@
-name: "gotoraptor"
+name: "goto-raptor"
 description: "Sends velociraptors if `goto` statements are added. xkcd.com/292"
 inputs:
   github-token:
