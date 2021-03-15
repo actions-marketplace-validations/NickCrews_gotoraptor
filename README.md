@@ -31,8 +31,17 @@ jobs:
 ```
 
 If the action finds any gotos were added, then the PR or push commit gets
-flagged. Of note are the velociraptor memes, the xckd comic, and annotations
-on specific lines:
+flagged. The action looks through all added or modified lines in `.c`,
+`.cpp`,`.h`, and `.hpp` files, using a simple regex to find `goto` statements.
+This isn't perfect, and might result in some false
+positives and false negatives. A more complete method would be to actually
+compile the code and parse the syntax tree, but I found this not feasible:
+This action couldn't possibly know exactly how your project is compiled,
+what compiler flags are used, etc.
+
+In the screenshot below you can see what the action does when it finds an
+added goto. Of note are the velociraptor memes, the xckd comic, and
+annotations on specific lines:
 
 ![](docs/velociraptors_incoming.png)
 
