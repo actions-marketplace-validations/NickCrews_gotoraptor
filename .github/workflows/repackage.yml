@@ -12,7 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install the new packages.
-        run: npm ci
+        # not `npm ci` because we've changed our dependencies.
+        run: npm install
       - name: Format, lint, test, and package.
         run: npm run all
       - name: See what changed
@@ -26,6 +27,6 @@ jobs:
           add: dist
           author_name: Nick Crews
           author_email: nicholas.b.crews@gmail.com
-          message: 'Re-package dist/* after updating dependencies'
+          message: "Re-package dist/* after updating dependencies"
       - name: "Ensure there are no other unstaged changes lingering"
         run: git diff --quiet --exit-code
