@@ -112,10 +112,10 @@ async function getChangedCFiles(context: MyContext): Promise<File[]> {
   const changedStatuses = ["added", "modified", "renamed"];
   const changedFiles = files.filter((f) => changedStatuses.includes(f.status));
   core.debug(`Files with changes: ${changedFiles.map((f) => f.filename)}`);
-  // regex for c, cc, h, hpp
-  const pattern = /.*\.[ch](p{2})?$/;
+  // regex for c, cs, cc, h, hpp
+  const pattern = /.*\.[ch](s|p{2})?$/;
   const changedCFiles = changedFiles.filter((f) => f.filename.match(pattern));
-  core.debug(`Changed C/C++ files: ${changedCFiles.map((f) => f.filename)}`);
+  core.debug(`Changed C/C++/C# files: ${changedCFiles.map((f) => f.filename)}`);
   return changedCFiles;
 }
 
