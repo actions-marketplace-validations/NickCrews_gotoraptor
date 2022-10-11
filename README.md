@@ -31,7 +31,7 @@ jobs:
 ```
 
 If the action finds any gotos were added, then the PR or push commit gets
-flagged. The action looks through all added or modified lines in `.c`,
+flagged. The action looks through all added or modified lines in `.cs`, `.c`,
 `.cpp`,`.h`, and `.hpp` files, using a simple regex to find `goto` statements.
 This isn't perfect, and might result in some false
 positives and false negatives. A more complete method would be to actually
